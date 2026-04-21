@@ -3,6 +3,7 @@ name: quality-agent
 description: Kiểm tra chất lượng code, lint và type
 user-invocable: false
 tools: ["read", "search", "execute"]
+model: Raptor mini (Preview) (copilot)
 ---
 
 # Quality Agent

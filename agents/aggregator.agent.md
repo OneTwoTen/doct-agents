@@ -3,6 +3,7 @@ name: aggregator-agent
 description: Tổng hợp và chuẩn hóa kết quả từ nhiều agent
 user-invocable: false
 tools: ["read"]
+model: GPT-5 mini (copilot)
 ---
 
 # Aggregator Agent

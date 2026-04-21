@@ -3,6 +3,7 @@ name: test-agent
 description: Chịu trách nhiệm viết unit test và đề xuất test cases
 user-invocable: false
 tools: ["read", "search", "edit", "execute"]
+model: GPT-5 mini (copilot)
 ---
 
 # Test Agent

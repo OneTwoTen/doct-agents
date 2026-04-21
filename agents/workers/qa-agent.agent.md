@@ -3,6 +3,7 @@ name: qa-agent
 description: Chịu trách nhiệm kiểm thử, kiểm tra chất lượng code, lint và type
 user-invocable: false
 tools: ["read", "search"]
+model: Raptor mini (Preview) (copilot)
 ---
 
 # QA Agent
