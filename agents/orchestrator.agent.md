@@ -1,7 +1,7 @@
 ---
 name: orchestrator
 description: Chịu trách nhiệm điều phối các agent
-tools: ["agent"]
+tools: ["agent", "edit", "execute", "read", "search", "web", "todo"]
 agents: ["*"]
 model: GPT-5.4 mini (copilot)
 ---
