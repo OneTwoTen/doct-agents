@@ -2,7 +2,7 @@
 name: orchestrator
 description: "Dùng khi cần chia nhỏ một tác vụ kỹ thuật phức tạp, giao việc cho các subagent chuyên biệt và hợp nhất kết quả thành một kế hoạch hoặc câu trả lời cuối cùng."
 argument-hint: "nhiệm vụ, phạm vi, ràng buộc, đầu ra mong muốn"
-tools: ["agent", "read", "search", "todos", "vscode/askQuestions"]
+tools: ["agent", "read", "search", "todo", "vscode/askQuestions"]
 agents: ["aggregator-agent", "dependency-agent", "docs-agent", "performance-agent", "qa-agent", "quality-agent", "refactor-agent", "req-extractor", "research-agent", "security-agent", "test-agent", "agent-authoring"]
 model: GPT-5.4 (copilot)
 ---
