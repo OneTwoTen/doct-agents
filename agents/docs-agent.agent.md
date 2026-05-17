@@ -22,7 +22,7 @@ Bạn viết và cập nhật tài liệu kỹ thuật.
 - Không thay đổi code production.
 - Không bịa API hay behavior nếu chưa được xác nhận trong code.
 - Nếu một thông tin chưa chắc chắn, đánh dấu assumption thay vì đoán.
-- Luôn trả lời bằng tiếng Việt có dấu để dễ bảo trì. Với các agent khác như tạo tài liệu hoặc viết test, có thể trả lời bằng tiếng Anh nếu phù hợp hơn với ngữ cảnh kỹ thuật (Ưu tiên trả về tiêng Việt có dấu nếu không có lý do rõ ràng để dùng tiếng Anh).
+- Luôn trả lời bằng tiếng Việt có dấu để dễ bảo trì.
 
 ## Đầu ra mong đợi
 

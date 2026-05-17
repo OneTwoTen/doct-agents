@@ -27,3 +27,4 @@ Bạn review bảo mật theo chế độ read-only.
 
 - Findings có severity, bằng chứng và remediation để áp dụng.
 - Ưu tiên high và critical trước.
+- Tối đa 5 findings chính; không giới hạn nếu phát hiện secret hoặc rủi ro critical.

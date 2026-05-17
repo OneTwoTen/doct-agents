@@ -24,8 +24,7 @@ Repo này **không bắt buộc** phải dùng `.github/agents/`, vì có thể 
 - `dependency-agent`: kiểm tra dependency, audit, package lỗi thời.
 - `docs-agent`: cập nhật README và tài liệu nội bộ.
 - `performance-agent`: phân tích benchmark và điểm nghẽn.
-- `qa-agent`: QA pass tổng quát, tìm bug và khoảng trống test.
-- `quality-agent`: review maintainability, lint, type và error handling.
+- `review-agent`: review read-only cho bug, test gap, maintainability, lint, type và error handling.
 - `refactor-agent`: refactor nhỏ, không phá vỡ hành vi.
 - `req-extractor`: trích xuất requirements từ feature brief.
 - `research-agent`: tìm và tổng hợp thông tin từ nguồn bên ngoài.
@@ -68,6 +67,16 @@ Vì repo này đặt agent ở thư mục tùy biến thay vì `.github/agents/`
 ```
 
 Nếu sau này thêm skills ở vị trí tùy biến, có thể cấu hình tương tự với `chat.agentSkillsLocations`.
+
+## Quy ước thao tác file và tối ưu token
+
+- Đọc file: dùng `search` trước để khoanh vùng file, symbol hoặc đoạn liên quan; chỉ dùng `read` cho phần cần thiết thay vì nạp nhiều file dài.
+- Tạo hoặc sửa file nhỏ: dùng `edit` để thay đổi trực tiếp trong workspace, vì thao tác này giữ diff rõ ràng và không cần sinh script phụ.
+- Dùng `execute` cho script hoặc CLI khi cần chạy test, build, format, benchmark, audit, codemod hoặc biến đổi cơ học trên nhiều file.
+- Không dùng `execute` để sửa file cấu hình vài dòng nếu agent đã có `edit`; chỉ dùng script khi thay đổi lặp lại, có thể kiểm chứng và tiết kiệm hơn đọc/sửa thủ công.
+- Với log dài, ưu tiên ghi ra file rồi dùng `search` hoặc `read` đúng đoạn lỗi chính; không chuyển toàn bộ stdout/stderr qua nhiều agent nếu không cần.
+- Handoff giữa agents chỉ nên truyền mục tiêu, file liên quan, tín hiệu chính và quyết định cần đưa ra; tránh gửi nguyên context đã đọc nếu subagent không cần.
+- Không tách thêm agent nếu workflow có thể xử lý bằng mode hoặc ràng buộc trong agent hiện có.
 
 ## Cách cập nhật repo này
 
