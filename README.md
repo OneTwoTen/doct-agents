@@ -132,6 +132,7 @@ Ghi chú:
 - Trước khi hỏi người dùng cấp thêm quyền cho agent hiện tại, kiểm tra xem repo đã có subagent có tool phù hợp chưa; nếu có, dùng `agent` để handoff.
 - Chỉ hỏi lại khi thiếu dữ liệu nghiệp vụ, cần xác nhận thao tác phá hủy/khó hoàn tác, cần xác thực bên ngoài hoặc chưa có agent nào trong repo có quyền phù hợp.
 - Agent chạy command nhưng không có `edit` không được tự sửa file bằng CLI; khi cần thay đổi nội dung, handoff sang `docs-agent`, `refactor-agent`, `test-agent` hoặc `agent-authoring` theo đúng phạm vi.
+- Agent không được tuyên bố sẽ nạp skill, dùng tool hoặc dùng đường dẫn tài nguyên nếu skill/tool đó chưa có trong context hiện tại hoặc chưa được kích hoạt rõ ràng.
 
 ## Agent I/O contract
 
@@ -157,8 +158,9 @@ Output handoff:
 
 - Đọc file: dùng `search` trước để khoanh vùng file/symbol/đoạn liên quan, rồi mới `read` phần cần thiết.
 - Sửa file có sẵn: dùng `edit` với diff/patch nhỏ, rõ và dễ review.
-- Tạo file mới: sinh nội dung đầy đủ rồi ghi bằng `edit`; dùng script/template khi boilerplate lớn.
+- Tạo file mới: sinh nội dung đầy đủ rồi ghi bằng `edit`; chỉ dùng template như nguồn tham khảo, không dùng script ghi file nếu nội dung có tiếng Việt hoặc văn bản cần giữ nguyên encoding.
 - Không dùng `execute`/shell để tạo hoặc sửa file nội dung, bao gồm redirect, heredoc, `Set-Content`, `Out-File`, `sed -i`, `perl -pi` hoặc script ghi file một lần; ngoại lệ chỉ dành cho công cụ sinh file/format/codemod có chủ đích, có thể kiểm chứng và nằm đúng phạm vi.
+- Với lỗi mojibake hoặc encoding tiếng Việt, chỉ sửa các dòng/đoạn có dấu hiệu hỏng bằng `edit`; không decode/encode lại toàn file khi file có cả đoạn đang hiển thị đúng. Nếu không chắc nội dung gốc, trả `needs-info` thay vì đoán.
 - Refactor hàng loạt: chỉ dùng script/codemod qua `execute` khi thay đổi cơ học, có thể kiểm chứng và tiết kiệm hơn chỉnh tay.
 - Log dài: ưu tiên ghi ra file log rồi đọc đúng đoạn lỗi chính thay vì truyền toàn bộ stdout/stderr qua nhiều agent.
 - Handoff giữa agents: chỉ truyền mục tiêu, phạm vi, constraint, tín hiệu chính và output mong muốn.
