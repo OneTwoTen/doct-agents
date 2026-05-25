@@ -45,16 +45,16 @@ Nếu sau này thêm skills ở vị trí tùy biến, cấu hình tương tự 
 | Agent | Khi nào dùng | Tools | User invocable | Model |
 | --- | --- | --- | --- | --- |
 | `orchestrator` | Chia nhỏ tác vụ kỹ thuật phức tạp, giao việc cho subagent và hợp nhất kết quả cuối. | `agent`, `read`, `search`, `todo`, `vscode/askQuestions` | Không khai báo | GPT-5.4 |
-| `cli-executor` | Chạy terminal/CLI, thu stdout/stderr/exit code/log và phân loại kết quả thành lỗi, tiếp tục hoặc hoàn tất. | `execute`, `read`, `vscode/askQuestions` | Có | GPT-5.4 |
+| `cli-executor` | Chạy terminal/CLI, thu stdout/stderr/exit code/log và phân loại kết quả thành lỗi, tiếp tục hoặc hoàn tất. | `execute`, `read`, `agent`, `vscode/askQuestions` | Có | GPT-5.4 |
 | `aggregator-agent` | Tổng hợp findings từ nhiều subagent, khử trùng lặp và sắp xếp theo mức độ nghiêm trọng. | Không có | Không | GPT-5.4 mini |
 | `agent-authoring` | Tạo hoặc cập nhật VS Code custom agents hay agent skills đúng cấu trúc workspace. | `read`, `search`, `edit`, `web`, `vscode/askQuestions` | Không | GPT-5 mini |
-| `dependency-agent` | Kiểm tra package manager, lockfile, gói lỗi thời, vulnerability và hướng nâng cấp an toàn. | `read`, `search`, `execute` | Không | Raptor mini |
+| `dependency-agent` | Kiểm tra package manager, lockfile, gói lỗi thời, vulnerability và hướng nâng cấp an toàn. | `read`, `search`, `execute`, `agent` | Không | Raptor mini |
 | `docs-agent` | Tạo/cập nhật README, hướng dẫn cài đặt, onboarding notes hoặc tài liệu nội bộ ngắn. | `read`, `search`, `edit` | Không | GPT-5 mini |
-| `performance-agent` | Phân tích benchmark, hiệu năng thực tế, điểm nghẽn hoặc so sánh với baseline. | `read`, `search`, `execute` | Không | Raptor mini |
+| `performance-agent` | Phân tích benchmark, hiệu năng thực tế, điểm nghẽn hoặc so sánh với baseline. | `read`, `search`, `execute`, `agent` | Không | Raptor mini |
 | `refactor-agent` | Refactor nhỏ, giữ nguyên hành vi, cải thiện readability hoặc giảm trùng lặp trong phạm vi hẹp. | `read`, `search`, `edit` | Không | Raptor mini |
 | `req-extractor` | Chuyển brief/ticket/yêu cầu mơ hồ thành requirements, constraints, acceptance criteria và câu hỏi làm rõ. | `read`, `search`, `vscode/askQuestions` | Không | GPT-5 mini |
 | `research-agent` | Thu thập thông tin bên ngoài repo từ nguồn đáng tin để hỗ trợ quyết định kỹ thuật/kiến trúc. | `web`, `read`, `search` | Không | GPT-5 mini |
-| `review-agent` | Review code read-only theo mode `qa` hoặc `quality`, tập trung bug, test gap, maintainability, lint/type/error handling. | `read`, `search`, `execute` | Không | Raptor mini |
+| `review-agent` | Review code read-only theo mode `qa` hoặc `quality`, tập trung bug, test gap, maintainability, lint/type/error handling. | `read`, `search`, `execute`, `agent` | Không | Raptor mini |
 | `security-agent` | Security review read-only để tìm secrets, cấu hình không an toàn hoặc flow/code path rủi ro. | `read`, `search` | Không | GPT-5 mini |
 | `test-agent` | Thêm/cập nhật test tự động, tìm coverage gaps và chạy tập test hẹp nhất liên quan. | `read`, `search`, `edit`, `execute` | Không | Raptor mini |
 
@@ -112,6 +112,7 @@ Ghi chú:
 - `tools` chỉ cấp quyền tối thiểu cần thiết.
 - Nếu agent gọi subagent, phải có `agent` trong `tools` và liệt kê subagent trong `agents`.
 - Agent read-only không được có `edit`; agent không cần chạy lệnh không nên có `execute`.
+- Agent có thể gặp việc ngoài quyền của mình nên có đường handoff tối thiểu qua `agent` thay vì hỏi người dùng cấp thêm quyền khi repo đã có subagent phù hợp.
 - `argument-hint` chỉ dùng khi input của agent cần được định hướng rõ.
 - `user-invocable` hiện chỉ bật cho `cli-executor`; phần lớn worker còn lại dùng qua orchestrator.
 
@@ -125,6 +126,12 @@ Ghi chú:
 - `web`: tra cứu nguồn ngoài repo khi thông tin có thể thay đổi hoặc cần nguồn chính thức.
 - `todo`: theo dõi tác vụ nhiều bước trong orchestrator.
 - `vscode/askQuestions`: hỏi lại khi thiếu dữ liệu để tiếp tục an toàn.
+
+## Quy ước điều phối quyền
+
+- Trước khi hỏi người dùng cấp thêm quyền cho agent hiện tại, kiểm tra xem repo đã có subagent có tool phù hợp chưa; nếu có, dùng `agent` để handoff.
+- Chỉ hỏi lại khi thiếu dữ liệu nghiệp vụ, cần xác nhận thao tác phá hủy/khó hoàn tác, cần xác thực bên ngoài hoặc chưa có agent nào trong repo có quyền phù hợp.
+- Agent chạy command nhưng không có `edit` không được tự sửa file bằng CLI; khi cần thay đổi nội dung, handoff sang `docs-agent`, `refactor-agent`, `test-agent` hoặc `agent-authoring` theo đúng phạm vi.
 
 ## Agent I/O contract
 
@@ -151,6 +158,7 @@ Output handoff:
 - Đọc file: dùng `search` trước để khoanh vùng file/symbol/đoạn liên quan, rồi mới `read` phần cần thiết.
 - Sửa file có sẵn: dùng `edit` với diff/patch nhỏ, rõ và dễ review.
 - Tạo file mới: sinh nội dung đầy đủ rồi ghi bằng `edit`; dùng script/template khi boilerplate lớn.
+- Không dùng `execute`/shell để tạo hoặc sửa file nội dung, bao gồm redirect, heredoc, `Set-Content`, `Out-File`, `sed -i`, `perl -pi` hoặc script ghi file một lần; ngoại lệ chỉ dành cho công cụ sinh file/format/codemod có chủ đích, có thể kiểm chứng và nằm đúng phạm vi.
 - Refactor hàng loạt: chỉ dùng script/codemod qua `execute` khi thay đổi cơ học, có thể kiểm chứng và tiết kiệm hơn chỉnh tay.
 - Log dài: ưu tiên ghi ra file log rồi đọc đúng đoạn lỗi chính thay vì truyền toàn bộ stdout/stderr qua nhiều agent.
 - Handoff giữa agents: chỉ truyền mục tiêu, phạm vi, constraint, tín hiệu chính và output mong muốn.

@@ -1,8 +1,8 @@
 ---
 name: dependency-agent
 description: "Dùng khi cần kiểm tra package manager, lockfile, gói lỗi thời hoặc báo cáo lỗ hổng và đề xuất hướng nâng cấp an toàn."
-tools: ["read", "search", "execute"]
-agents: []
+tools: ["read", "search", "execute", "agent"]
+agents: ["refactor-agent", "test-agent", "cli-executor"]
 user-invocable: false
 model: Raptor mini (Preview) (copilot)
 ---
@@ -23,6 +23,8 @@ Bạn phân tích dependency và rủi ro cập nhật.
 - Không tự động cài đặt, cập nhật dependency hay sửa lockfile.
 - Chỉ chạy lệnh trong thư mục được chỉ định.
 - Nếu cần thực thi, ghi rõ command đã dùng và kết quả quan trọng.
+- Không dùng `execute` để sửa manifest, config hoặc lockfile; nếu người dùng yêu cầu thay đổi file, handoff sang agent có `edit` hoặc nêu rõ repo chưa có dependency edit agent chuyên trách.
+- Khi có agent phù hợp trong `agents`, không hỏi người dùng cấp thêm quyền cho `dependency-agent`; hãy handoff sang agent đó.
 
 ## Đầu ra mong đợi
 

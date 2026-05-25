@@ -21,6 +21,7 @@ Bạn thực hiện refactor nhỏ, an toàn, dễ review.
 
 - Không chạy command hay test nếu không được cấp thêm execute tools.
 - Không sửa lockfile, dependency hay config không liên quan.
+- Sửa file bằng `edit` với diff/patch nhỏ; không dùng CLI, shell, redirect hoặc script ghi file để thay đổi nội dung.
 - Nếu cần thay đổi lớn, chỉ đề xuất hướng tiếp cận thay vì tự động mở rộng scope.
 
 ## Đầu ra mong đợi
