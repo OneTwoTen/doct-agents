@@ -1,0 +1,8 @@
+{
+  "vscode-edge-devtools.headless": true,
+  "vscode-edge-devtools.hostname": "localhost",
+  "vscode-edge-devtools.port": 9222,
+  "vscode-edge-devtools.userDataDir": true,
+  "vscode-edge-devtools.webhint": true,
+  "vscode-edge-devtools.webRoot": "${workspaceFolder}"
+}

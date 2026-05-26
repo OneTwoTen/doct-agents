@@ -7,9 +7,14 @@
 ```text
 .
 ├── README.md
+├── .vscode/
+│   ├── extensions.json
+│   ├── mcp.json
+│   └── settings.json
 └── agents/
     ├── agent-authoring.agent.md
     ├── aggregator.agent.md
+    ├── browser-agent.agent.md
     ├── cli-executor.agent.md
     ├── dependency-agent.agent.md
     ├── docs-agent.agent.md
@@ -24,6 +29,8 @@
 ```
 
 Repo này không bắt buộc dùng `.github/agents/`. Nếu đặt repo ở vị trí tùy biến, hãy cấu hình VS Code để đọc thư mục `agents/`.
+
+Repo cũng có cấu hình workspace MCP ở `.vscode/mcp.json` để khai báo Chrome DevTools MCP server `chrome-devtools` cho VS Code/Copilot, và recommendation cho Microsoft Edge Tools for VS Code trong `.vscode/extensions.json`.
 
 ## Cấu hình VS Code
 
@@ -40,11 +47,48 @@ Ví dụ khi dùng trực tiếp trong repo hiện tại hoặc khi nhúng repo 
 
 Nếu sau này thêm skills ở vị trí tùy biến, cấu hình tương tự với `chat.agentSkillsLocations`.
 
+Workspace này cũng gợi ý cài Microsoft Edge Tools for VS Code:
+
+```json
+{
+  "recommendations": [
+    "ms-edgedevtools.vscode-edge-devtools"
+  ]
+}
+```
+
+Settings mặc định cho extension nằm trong `.vscode/settings.json`, gồm host `localhost`, port `9222`, user data dir tách biệt và web root là `${workspaceFolder}`.
+
+## Cấu hình MCP
+
+Chrome DevTools MCP được khai báo ở workspace config:
+
+```json
+{
+  "servers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics"]
+    }
+  }
+}
+```
+
+Trong custom agent, cấp quyền gọi toàn bộ tool của server bằng `chrome-devtools/*` trong frontmatter `tools`.
+
+Ghi chú:
+
+- VS Code cần trust MCP server trước khi tool sẵn sàng trong chat.
+- Máy chạy agent cần có Node.js/npm để `npx` tải và chạy `chrome-devtools-mcp`.
+- Chỉ agent thật sự cần thao tác trình duyệt mới nên có `chrome-devtools/*`; hiện tại quyền này chỉ cấp cho `browser-agent`.
+- Microsoft Edge Tools for VS Code là extension VS Code, không phải MCP server trong repo này. Không thêm `vscode-edge-devtools` vào frontmatter `tools` nếu extension chưa expose agent tool tương ứng trong VS Code.
+
 ## Agent hiện có
 
 | Agent | Khi nào dùng | Tools | User invocable | Model |
 | --- | --- | --- | --- | --- |
 | `orchestrator` | Chia nhỏ tác vụ kỹ thuật phức tạp, giao việc cho subagent và hợp nhất kết quả cuối. | `agent`, `read`, `search`, `todo`, `vscode/askQuestions` | Không khai báo | GPT-5.4 |
+| `browser-agent` | Kiểm tra ứng dụng web trong Chrome bằng Chrome DevTools MCP: DOM, console, network, screenshot, trace hiệu năng hoặc lỗi UI/runtime. | `read`, `search`, `execute`, `chrome-devtools/*` | Không | Raptor mini |
 | `cli-executor` | Chạy terminal/CLI, thu stdout/stderr/exit code/log và phân loại kết quả thành lỗi, tiếp tục hoặc hoàn tất. | `execute`, `read`, `agent`, `vscode/askQuestions` | Có | GPT-5.4 |
 | `aggregator-agent` | Tổng hợp findings từ nhiều subagent, khử trùng lặp và sắp xếp theo mức độ nghiêm trọng. | Không có | Không | GPT-5.4 mini |
 | `agent-authoring` | Tạo hoặc cập nhật VS Code custom agents hay agent skills đúng cấu trúc workspace. | `read`, `search`, `edit`, `web`, `vscode/askQuestions` | Không | GPT-5 mini |
@@ -61,6 +105,7 @@ Nếu sau này thêm skills ở vị trí tùy biến, cấu hình tương tự 
 ## Nhóm vai trò
 
 - Điều phối: `orchestrator`
+- Kiểm tra trình duyệt: `browser-agent`
 - Chạy lệnh: `cli-executor`
 - Tổng hợp: `aggregator-agent`
 - Tạo/cập nhật customization: `agent-authoring`
@@ -113,6 +158,7 @@ Ghi chú:
 - Nếu agent gọi subagent, phải có `agent` trong `tools` và liệt kê subagent trong `agents`.
 - Agent read-only không được có `edit`; agent không cần chạy lệnh không nên có `execute`.
 - Agent có thể gặp việc ngoài quyền của mình nên có đường handoff tối thiểu qua `agent` thay vì hỏi người dùng cấp thêm quyền khi repo đã có subagent phù hợp.
+- Nếu agent cần Chrome DevTools MCP, ưu tiên handoff sang `browser-agent`; chỉ cấp trực tiếp `chrome-devtools/*` cho agent có nhiệm vụ thao tác trình duyệt.
 - `argument-hint` chỉ dùng khi input của agent cần được định hướng rõ.
 - `user-invocable` hiện chỉ bật cho `cli-executor`; phần lớn worker còn lại dùng qua orchestrator.
 
@@ -123,6 +169,7 @@ Ghi chú:
 - `edit`: sửa file; chỉ cấp cho agent thực sự được phép thay đổi nội dung.
 - `execute`: chạy CLI, test, audit, benchmark hoặc command kiểm chứng.
 - `agent`: giao việc cho subagent.
+- `chrome-devtools/*`: cho phép agent dùng toàn bộ tool từ Chrome DevTools MCP server `chrome-devtools`.
 - `web`: tra cứu nguồn ngoài repo khi thông tin có thể thay đổi hoặc cần nguồn chính thức.
 - `todo`: theo dõi tác vụ nhiều bước trong orchestrator.
 - `vscode/askQuestions`: hỏi lại khi thiếu dữ liệu để tiếp tục an toàn.
@@ -132,6 +179,7 @@ Ghi chú:
 - Trước khi hỏi người dùng cấp thêm quyền cho agent hiện tại, kiểm tra xem repo đã có subagent có tool phù hợp chưa; nếu có, dùng `agent` để handoff.
 - Chỉ hỏi lại khi thiếu dữ liệu nghiệp vụ, cần xác nhận thao tác phá hủy/khó hoàn tác, cần xác thực bên ngoài hoặc chưa có agent nào trong repo có quyền phù hợp.
 - Agent chạy command nhưng không có `edit` không được tự sửa file bằng CLI; khi cần thay đổi nội dung, handoff sang `docs-agent`, `refactor-agent`, `test-agent` hoặc `agent-authoring` theo đúng phạm vi.
+- Khi cần kiểm tra UI trong Chrome, đọc console/network, chụp screenshot hoặc trace hiệu năng frontend, handoff sang `browser-agent` để gọi Chrome DevTools MCP.
 - Agent không được tuyên bố sẽ nạp skill, dùng tool hoặc dùng đường dẫn tài nguyên nếu skill/tool đó chưa có trong context hiện tại hoặc chưa được kích hoạt rõ ràng.
 
 ## Agent I/O contract

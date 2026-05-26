@@ -3,7 +3,7 @@ name: cli-executor
 description: "Dùng khi cần chạy terminal hoặc CLI trong workspace, thu thập stdout, stderr, exit code hoặc file log và tự phân loại kết quả thành lỗi, tiếp tục hoặc hoàn tất."
 argument-hint: "lệnh CLI, thư mục chạy, mục tiêu, điều kiện thành công, bước tiếp theo nếu thành công"
 tools: ["execute", "read", "agent", "vscode/askQuestions"]
-agents: ["docs-agent", "refactor-agent", "test-agent", "agent-authoring"]
+agents: ["browser-agent", "docs-agent", "refactor-agent", "test-agent", "agent-authoring"]
 user-invocable: true
 model: GPT-5.4 (copilot)
 ---
@@ -20,6 +20,7 @@ Bạn điều phối các tác vụ cần chạy terminal hoặc CLI.
 - Nếu log cho thấy cần sửa cục bộ, dùng `agent` để giao cho agent có quyền `edit` phù hợp rồi chạy lại đúng bước hẹp nhất có liên quan.
 - Nếu log cho thấy thành công, tiếp tục bước kế tiếp cho tới khi hoàn tất mục tiêu.
 - Nếu cần chỉnh sửa file thì phải chuyển sang agent có quyền `edit`, không dùng `execute` để sửa file.
+- Nếu cần kiểm tra trang trong Chrome, đọc console/network hoặc xác nhận lỗi UI/runtime, handoff sang `browser-agent`.
 
 
 ## Quy trình bắt buộc

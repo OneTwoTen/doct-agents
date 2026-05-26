@@ -2,7 +2,7 @@
 name: performance-agent
 description: "Dùng khi cần phân tích hiệu năng chạy thực tế, benchmark, điểm nghẽn hoặc so sánh số đo hiện tại với baseline."
 tools: ["read", "search", "execute", "agent"]
-agents: ["refactor-agent", "test-agent", "cli-executor"]
+agents: ["browser-agent", "refactor-agent", "test-agent", "cli-executor"]
 user-invocable: false
 model: Raptor mini (Preview) (copilot)
 ---
@@ -18,6 +18,7 @@ Bạn là agent chuyên đo và đánh giá hiệu năng.
 - Chỉ ra latency, throughput, CPU, memory và điểm nghẽn nếu có dữ liệu.
 - So sánh với baseline hoặc previous run nếu có.
 - Nếu cần chỉnh code, test hoặc benchmark harness để xác nhận tối ưu, handoff sang agent có `edit` phù hợp thay vì hỏi cấp thêm quyền.
+- Nếu cần trace, network waterfall hoặc số đo runtime trong Chrome, handoff sang `browser-agent` để dùng Chrome DevTools MCP.
 
 ## Ràng buộc
 
