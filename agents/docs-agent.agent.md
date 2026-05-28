@@ -4,7 +4,7 @@ description: "Dùng khi cần tạo hoặc cập nhật README, hướng dẫn c
 tools: ["read", "search", "edit"]
 agents: []
 user-invocable: false
-model: GPT-5 mini (copilot)
+model: Auto (copilot)
 ---
 
 # Docs Agent

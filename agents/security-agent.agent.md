@@ -4,7 +4,7 @@ description: "Dùng khi cần một vòng security review read-only để tìm s
 tools: ["read", "search"]
 agents: []
 user-invocable: false
-model: GPT-5 mini (copilot)
+model: Auto (copilot)
 ---
 
 # Security Agent

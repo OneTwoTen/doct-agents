@@ -4,7 +4,7 @@ description: "Dùng khi nhiều subagent đã tạo ra findings có cấu trúc 
 tools: []
 agents: []
 user-invocable: false
-model: GPT-5.4 mini (copilot)
+model: Auto (copilot)
 ---
 
 # Aggregator Agent

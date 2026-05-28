@@ -4,7 +4,7 @@ description: "Dùng khi cần thu thập thông tin bên ngoài repo từ tài l
 tools: ["web", "read", "search"]
 agents: []
 user-invocable: false
-model: GPT-5 mini (copilot)
+model: Auto (copilot)
 ---
 
 # Research Agent
