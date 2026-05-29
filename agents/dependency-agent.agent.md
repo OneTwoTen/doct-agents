@@ -4,7 +4,7 @@ description: "Dùng khi cần kiểm tra package manager, lockfile, gói lỗi t
 tools: ["read", "search", "execute", "agent"]
 agents: ["refactor-agent", "test-agent", "cli-executor"]
 user-invocable: false
-model: Raptor mini (Preview) (copilot)
+model: Auto (copilot)
 ---
 
 # Dependency Agent

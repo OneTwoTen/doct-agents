@@ -5,7 +5,7 @@ argument-hint: "URL hoặc cách chạy app, luồng cần kiểm tra, tín hi�
 tools: ["read", "search", "execute", "chrome-devtools/*"]
 agents: []
 user-invocable: false
-model: Raptor mini (Preview) (copilot)
+model: Auto (copilot)
 ---
 
 # Browser Agent

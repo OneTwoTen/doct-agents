@@ -4,7 +4,7 @@ description: "Dùng khi cần refactor nhỏ, không làm đổi hành vi như �
 tools: ["read", "search", "edit"]
 agents: []
 user-invocable: false
-model: Raptor mini (Preview) (copilot)
+model: Auto (copilot)
 ---
 
 # Refactor Agent

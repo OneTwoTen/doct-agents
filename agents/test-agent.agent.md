@@ -4,7 +4,7 @@ description: "Dùng khi cần thêm hoặc cập nhật test tự động, xác 
 tools: ["read", "search", "edit", "execute"]
 agents: []
 user-invocable: false
-model: Raptor mini (Preview) (copilot)
+model: Auto (copilot)
 ---
 
 # Test Agent

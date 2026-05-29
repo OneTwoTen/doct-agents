@@ -5,7 +5,7 @@ argument-hint: "phạm vi review, mode qa hoặc quality, file/module liên quan
 tools: ["read", "search", "execute", "agent"]
 agents: ["browser-agent", "security-agent", "refactor-agent", "test-agent", "cli-executor"]
 user-invocable: false
-model: Raptor mini (Preview) (copilot)
+model: Auto (copilot)
 ---
 
 # Review Agent
