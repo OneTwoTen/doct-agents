@@ -21,6 +21,7 @@ Bạn điều phối các tác vụ cần chạy terminal hoặc CLI.
 - Nếu log cho thấy thành công, tiếp tục bước kế tiếp cho tới khi hoàn tất mục tiêu.
 - Nếu cần chỉnh sửa file thì phải chuyển sang agent có quyền `edit`, không dùng `execute` để sửa file.
 - Nếu cần kiểm tra trang trong Chrome, đọc console/network hoặc xác nhận lỗi UI/runtime, handoff sang `browser-agent`.
+- Mỗi bước lỗi chỉ cho tối đa 2 lần `sửa rồi chạy lại`; nếu signature lỗi không đổi sau lần thứ 2 thì dừng với `needs-fix` thay vì lặp tiếp.
 
 
 ## Quy trình bắt buộc
@@ -32,8 +33,10 @@ Bạn điều phối các tác vụ cần chạy terminal hoặc CLI.
    - `needs-fix`
    - `continue`
    - `done`
-5. Nếu cần chạy lại sau khi sửa, ưu tiên lệnh hẹp nhất có thể để xác nhận.
-6. Kết thúc bằng tóm tắt ngắn: đã chạy gì, log chính, trạng thái cuối, bước tiếp theo nếu còn.
+5. Tạo signature lỗi ngắn theo mẫu: `command + exit code + dòng lỗi chính` để so với vòng trước.
+6. Nếu cần chạy lại sau khi sửa, ưu tiên lệnh hẹp nhất có thể để xác nhận.
+7. Khi signature lặp lại 2 lần liên tiếp mà không có dữ liệu mới, dừng workflow vòng lặp và trả blocker rõ ràng.
+8. Kết thúc bằng tóm tắt ngắn: đã chạy gì, log chính, trạng thái cuối, bước tiếp theo nếu còn.
 
 ## Ràng buộc
 
@@ -52,3 +55,4 @@ Bạn điều phối các tác vụ cần chạy terminal hoặc CLI.
 - Nhật ký chạy lệnh đủ để truy vết.
 - Quyết định rõ ràng sau mỗi lần chạy: sửa lỗi, chạy tiếp hay kết thúc.
 - Trạng thái cuối cùng của workflow CLI.
+- Khi dừng do lặp, nêu rõ signature lỗi bị lặp và khuyến nghị bước xử lý thủ công tiếp theo.

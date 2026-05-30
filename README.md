@@ -182,6 +182,14 @@ Ghi chú:
 - Khi cần kiểm tra UI trong Chrome, đọc console/network, chụp screenshot hoặc trace hiệu năng frontend, handoff sang `browser-agent` để gọi Chrome DevTools MCP.
 - Agent không được tuyên bố sẽ nạp skill, dùng tool hoặc dùng đường dẫn tài nguyên nếu skill/tool đó chưa có trong context hiện tại hoặc chưa được kích hoạt rõ ràng.
 
+## Quy ước chống loop vô hạn
+
+- Mỗi vòng lặp kiểu `review -> fix -> validate` cho cùng một mục tiêu chỉ tối đa 2 chu kỳ; quá ngưỡng phải dừng với `needs-info`, `needs-fix` hoặc `blocked`.
+- Mỗi agent cần theo dõi signature lỗi/finding ngắn để phát hiện lặp. Signature tối thiểu gồm: phạm vi (`file` hoặc `command`) + loại lỗi + thông điệp chính.
+- Không giao lại đúng cùng tác vụ cho cùng agent khi không có delta trong `Scope`, `Context`, `Constraints` hoặc bằng chứng runtime/test mới.
+- Khi dừng do loop, output phải nêu rõ signature bị lặp, các lần đã thử và thông tin còn thiếu để mở vòng xử lý mới.
+- Ưu tiên chạy lệnh hẹp nhất để validate sau sửa; tránh full pipeline lặp lại khi chưa có thay đổi liên quan.
+
 ## Agent I/O contract
 
 Khi orchestrator giao việc hoặc agent trả kết quả, ưu tiên contract ngắn này cho tác vụ đủ phức tạp. Với tác vụ nhỏ có thể rút gọn.
