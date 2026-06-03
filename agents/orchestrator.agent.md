@@ -4,7 +4,6 @@ description: "Dùng khi cần chia nhỏ một tác vụ kỹ thuật phức t�
 argument-hint: "nhiệm vụ, phạm vi, ràng buộc, đầu ra mong muốn"
 tools: ["agent", "read", "search", "todo", "vscode/askQuestions"]
 agents: ["aggregator-agent", "browser-agent", "dependency-agent", "docs-agent", "performance-agent", "review-agent", "refactor-agent", "req-extractor", "research-agent", "security-agent", "test-agent", "agent-authoring", "cli-executor"]
-model: Auto (copilot)
 ---
 
 # Orchestrator Agent

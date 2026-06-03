@@ -4,7 +4,6 @@ description: "Dùng khi cần phân tích hiệu năng chạy thực tế, bench
 tools: ["read", "search", "execute", "agent"]
 agents: ["browser-agent", "refactor-agent", "test-agent", "cli-executor"]
 user-invocable: false
-model: Auto (copilot)
 ---
 
 # Performance Agent

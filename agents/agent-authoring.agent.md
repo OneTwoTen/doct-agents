@@ -5,7 +5,6 @@ argument-hint: "mục tiêu, phạm vi workspace hay user, agent hay skill, ràn
 tools: ["read", "search", "edit", "web", "vscode/askQuestions"]
 agents: []
 user-invocable: false
-model: Auto (copilot)
 ---
 
 # Agent Authoring Agent

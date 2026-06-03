@@ -4,7 +4,6 @@ description: "Dùng khi cần thu thập thông tin bên ngoài repo từ tài l
 tools: ["web", "read", "search"]
 agents: []
 user-invocable: false
-model: Auto (copilot)
 ---
 
 # Research Agent

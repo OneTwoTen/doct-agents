@@ -4,7 +4,6 @@ description: "Dùng khi cần tạo hoặc cập nhật README, hướng dẫn c
 tools: ["read", "search", "edit"]
 agents: []
 user-invocable: false
-model: Auto (copilot)
 ---
 
 # Docs Agent

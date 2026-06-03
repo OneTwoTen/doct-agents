@@ -5,7 +5,6 @@ argument-hint: "mô tả tính năng, ticket, kết quả mong muốn"
 tools: ["read", "search", "vscode/askQuestions"]
 agents: []
 user-invocable: false
-model: Auto (copilot)
 ---
 
 # Requirement Extractor Agent

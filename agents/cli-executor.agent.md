@@ -5,7 +5,6 @@ argument-hint: "lệnh CLI, thư mục chạy, mục tiêu, điều kiện thàn
 tools: ["execute", "read", "agent", "vscode/askQuestions"]
 agents: ["browser-agent", "docs-agent", "refactor-agent", "test-agent", "agent-authoring"]
 user-invocable: true
-model: Auto (copilot)
 ---
 
 # CLI Executor Agent
