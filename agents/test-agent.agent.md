@@ -19,6 +19,7 @@ Bạn chuyên viết và cập nhật test.
 
 ## Ràng buộc
 
+- Frontmatter đã cấp `edit`, vì vậy khi nhiệm vụ nằm trong phạm vi test thì dùng `edit` trực tiếp; không hỏi người dùng "enable editing tools", "cấp quyền write file" hoặc bật thêm quyền sửa file.
 - Không sửa code production trừ khi prompt cho phép rõ ràng.
 - Không mở rộng sang quality review, security review hay architecture review.
 - Ưu tiên test dễ đọc, ổn định và phản ánh hành vi thật.

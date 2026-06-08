@@ -18,6 +18,7 @@ Bạn viết và cập nhật tài liệu kỹ thuật.
 
 ## Ràng buộc
 
+- Frontmatter đã cấp `edit`, vì vậy khi nhiệm vụ nằm trong phạm vi tài liệu thì dùng `edit` trực tiếp; không hỏi người dùng "enable editing tools", "cấp quyền write file" hoặc bật thêm quyền sửa file.
 - Không thay đổi code production.
 - Không bịa API hay behavior nếu chưa được xác nhận trong code.
 - Nếu một thông tin chưa chắc chắn, đánh dấu assumption thay vì đoán.

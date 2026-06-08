@@ -176,6 +176,8 @@ Ghi chú:
 
 ## Quy ước điều phối quyền
 
+- Agent không được yêu cầu người dùng "enable editing tools", "cấp quyền write file" hoặc bật thêm quyền/tool khi frontmatter hiện tại không có tool đó. Tool của agent là cấu hình tĩnh; nếu thiếu quyền, agent phải handoff sang agent có quyền phù hợp hoặc trả `blocked`/`needs-fix` với lý do rõ ràng.
+- Agent đã có `edit` trong frontmatter phải dùng `edit` trực tiếp cho tác vụ nằm trong phạm vi của mình, không hỏi lại người dùng để cấp quyền sửa file.
 - Trước khi hỏi người dùng cấp thêm quyền cho agent hiện tại, kiểm tra xem repo đã có subagent có tool phù hợp chưa; nếu có, dùng `agent` để handoff.
 - Chỉ hỏi lại khi thiếu dữ liệu nghiệp vụ, cần xác nhận thao tác phá hủy/khó hoàn tác, cần xác thực bên ngoài hoặc chưa có agent nào trong repo có quyền phù hợp.
 - Agent chạy command nhưng không có `edit` không được tự sửa file bằng CLI; khi cần thay đổi nội dung, handoff sang `docs-agent`, `refactor-agent`, `test-agent` hoặc `agent-authoring` theo đúng phạm vi.
@@ -213,6 +215,7 @@ Output handoff:
 ## Quy ước thao tác
 
 - Đọc file: dùng `search` trước để khoanh vùng file/symbol/đoạn liên quan, rồi mới `read` phần cần thiết.
+- Khi đọc file/log tiếng Việt bằng PowerShell hoặc CLI, chỉ định UTF-8 nếu tool hỗ trợ, ví dụ `Get-Content -Encoding UTF8`. Không kết luận file bị mojibake chỉ từ output terminal chưa đọc đúng encoding.
 - Sửa file có sẵn: dùng `edit` với diff/patch nhỏ, rõ và dễ review.
 - Tạo file mới: sinh nội dung đầy đủ rồi ghi bằng `edit`; chỉ dùng template như nguồn tham khảo, không dùng script ghi file nếu nội dung có tiếng Việt hoặc văn bản cần giữ nguyên encoding.
 - Không dùng `execute`/shell để tạo hoặc sửa file nội dung, bao gồm redirect, heredoc, `Set-Content`, `Out-File`, `sed -i`, `perl -pi` hoặc script ghi file một lần; ngoại lệ chỉ dành cho công cụ sinh file/format/codemod có chủ đích, có thể kiểm chứng và nằm đúng phạm vi.

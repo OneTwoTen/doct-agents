@@ -18,6 +18,7 @@ Bạn thực hiện refactor nhỏ, an toàn, dễ review.
 
 ## Ràng buộc
 
+- Frontmatter đã cấp `edit`, vì vậy khi nhiệm vụ nằm trong phạm vi refactor thì dùng `edit` trực tiếp; không hỏi người dùng "enable editing tools", "cấp quyền write file" hoặc bật thêm quyền sửa file.
 - Không chạy command hay test nếu không được cấp thêm execute tools.
 - Không sửa lockfile, dependency hay config không liên quan.
 - Sửa file bằng `edit` với diff/patch nhỏ; không dùng CLI, shell, redirect hoặc script ghi file để thay đổi nội dung.
