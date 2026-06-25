@@ -85,9 +85,9 @@ Ghi chú:
 
 ## Agent hiện có
 
-| Agent | Khi nào dùng | Tools | User invocable | Model |
+| Agent | Khi nào dùng | Tools | User invocable | Model gợi ý |
 | --- | --- | --- | --- | --- |
-| `orchestrator` | Chia nhỏ tác vụ kỹ thuật phức tạp, giao việc cho subagent và hợp nhất kết quả cuối. | `agent`, `read`, `search`, `todo`, `vscode/askQuestions` | Không khai báo | GPT-5.4 |
+| `orchestrator` | Chia nhỏ tác vụ kỹ thuật phức tạp, giao việc cho subagent và hợp nhất kết quả cuối. | `agent`, `read`, `search`, `todo`, `vscode/askQuestions` | Có | GPT-5.4 |
 | `browser-agent` | Kiểm tra ứng dụng web trong Chrome bằng Chrome DevTools MCP: DOM, console, network, screenshot, trace hiệu năng hoặc lỗi UI/runtime. | `read`, `search`, `execute`, `chrome-devtools/*` | Không | Raptor mini |
 | `cli-executor` | Chạy terminal/CLI, thu stdout/stderr/exit code/log và phân loại kết quả thành lỗi, tiếp tục hoặc hoàn tất. | `execute`, `read`, `agent`, `vscode/askQuestions` | Có | GPT-5.4 |
 | `aggregator-agent` | Tổng hợp findings từ nhiều subagent, khử trùng lặp và sắp xếp theo mức độ nghiêm trọng. | Không có | Không | GPT-5.4 mini |
@@ -101,6 +101,8 @@ Ghi chú:
 | `review-agent` | Review code read-only theo mode `qa` hoặc `quality`, tập trung bug, test gap, maintainability, lint/type/error handling. | `read`, `search`, `execute`, `agent` | Không | Raptor mini |
 | `security-agent` | Security review read-only để tìm secrets, cấu hình không an toàn hoặc flow/code path rủi ro. | `read`, `search` | Không | GPT-5 mini |
 | `test-agent` | Thêm/cập nhật test tự động, tìm coverage gaps và chạy tập test hẹp nhất liên quan. | `read`, `search`, `edit`, `execute` | Không | Raptor mini |
+
+Các file agent hiện chưa pin `model` trong frontmatter, nên VS Code sẽ dùng model đang chọn hoặc model fallback của phiên chat. Cột `Model gợi ý` chỉ là định hướng vận hành; chỉ thêm `model` vào frontmatter khi tên model đã được xác nhận có sẵn trong VS Code/Copilot của workspace.
 
 ## Nhóm vai trò
 
@@ -160,7 +162,14 @@ Ghi chú:
 - Agent có thể gặp việc ngoài quyền của mình nên có đường handoff tối thiểu qua `agent` thay vì hỏi người dùng cấp thêm quyền khi repo đã có subagent phù hợp.
 - Nếu agent cần Chrome DevTools MCP, ưu tiên handoff sang `browser-agent`; chỉ cấp trực tiếp `chrome-devtools/*` cho agent có nhiệm vụ thao tác trình duyệt.
 - `argument-hint` chỉ dùng khi input của agent cần được định hướng rõ.
-- `user-invocable` hiện chỉ bật cho `cli-executor`; phần lớn worker còn lại dùng qua orchestrator.
+- `user-invocable` chỉ bật cho `orchestrator` và `cli-executor`; phần lớn worker còn lại dùng qua orchestrator.
+
+## Cách gọi nhanh
+
+- Muốn chạy terminal, chạy project, dev server, test, build, audit, migrate, seed, codegen hoặc script nghiệp vụ nội bộ trực tiếp: chọn `cli-executor`.
+- Muốn làm việc phức tạp cần chia nhỏ, ví dụ review tổng hợp, tối ưu hiệu năng, kiểm tra bảo mật rồi đề xuất sửa: chọn `orchestrator`.
+- Muốn kiểm tra UI/runtime trong Chrome: đi qua `orchestrator` hoặc handoff sang `browser-agent` nếu phiên VS Code cho phép chọn subagent.
+- Nếu agent trả lời kiểu "không có quyền chạy terminal" trong khi repo có `cli-executor`, đó là lỗi điều phối. Hãy gọi lại bằng `orchestrator` hoặc `cli-executor`, kèm thư mục cần chạy.
 
 ## Quy ước tool và quyền
 
@@ -177,6 +186,7 @@ Ghi chú:
 ## Quy ước điều phối quyền
 
 - Agent không được yêu cầu người dùng "enable editing tools", "cấp quyền write file" hoặc bật thêm quyền/tool khi frontmatter hiện tại không có tool đó. Tool của agent là cấu hình tĩnh; nếu thiếu quyền, agent phải handoff sang agent có quyền phù hợp hoặc trả `blocked`/`needs-fix` với lý do rõ ràng.
+- Agent không được nói "tôi không có quyền chạy terminal" nếu agent hiện tại có thể handoff sang `cli-executor` hoặc một subagent có `execute`.
 - Agent đã có `edit` trong frontmatter phải dùng `edit` trực tiếp cho tác vụ nằm trong phạm vi của mình, không hỏi lại người dùng để cấp quyền sửa file.
 - Trước khi hỏi người dùng cấp thêm quyền cho agent hiện tại, kiểm tra xem repo đã có subagent có tool phù hợp chưa; nếu có, dùng `agent` để handoff.
 - Chỉ hỏi lại khi thiếu dữ liệu nghiệp vụ, cần xác nhận thao tác phá hủy/khó hoàn tác, cần xác thực bên ngoài hoặc chưa có agent nào trong repo có quyền phù hợp.
@@ -224,6 +234,14 @@ Output handoff:
 - Log dài: ưu tiên ghi ra file log rồi đọc đúng đoạn lỗi chính thay vì truyền toàn bộ stdout/stderr qua nhiều agent.
 - Handoff giữa agents: chỉ truyền mục tiêu, phạm vi, constraint, tín hiệu chính và output mong muốn.
 - Không tách thêm agent nếu workflow có thể xử lý bằng mode, constraint hoặc agent hiện có.
+
+## Quy ước chạy subagent song song
+
+- Chỉ chạy song song khi các phần việc độc lập, phạm vi file/module không giao nhau và không cùng sửa một tài nguyên.
+- Phù hợp để song song: `security-agent`, `dependency-agent`, `performance-agent`, `review-agent`, `research-agent` khi mỗi agent chỉ đọc/đo một góc khác nhau.
+- Không chạy song song: nhiều agent cùng sửa code, cùng sửa test, cùng đụng `package.json`/lockfile, hoặc workflow cần kết quả bước trước mới biết bước sau.
+- Với task có sửa file, ưu tiên tuần tự: đo/review song song nếu được -> tổng hợp -> giao đúng một agent sửa -> chạy validate hẹp nhất.
+- Khi handoff song song, truyền context tối thiểu theo contract `Objective`, `Scope`, `Constraints`, `Context`, `Expected output` để giảm nhiễu và tránh lặp việc.
 
 ## Cập nhật repo này
 
