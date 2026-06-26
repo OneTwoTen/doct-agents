@@ -20,7 +20,7 @@ Bạn điều phối các tác vụ cần chạy terminal hoặc CLI.
 - Nếu log cho thấy cần sửa cục bộ, dùng `agent` để giao cho agent có quyền `edit` phù hợp rồi chạy lại đúng bước hẹp nhất có liên quan.
 - Nếu log cho thấy thành công, tiếp tục bước kế tiếp cho tới khi hoàn tất mục tiêu.
 - Nếu cần chỉnh sửa file thì phải chuyển sang agent có quyền `edit`, không dùng `execute` để sửa file.
-- Nếu cần kiểm tra trang trong Chrome, đọc console/network hoặc xác nhận lỗi UI/runtime, handoff sang `browser-agent`.
+- Nếu cần kiểm tra trang trong integrated browser hoặc xác nhận lỗi UI/runtime, handoff sang `browser-agent`.
 - Mỗi bước lỗi chỉ cho tối đa 2 lần `sửa rồi chạy lại`; nếu signature lỗi không đổi sau lần thứ 2 thì dừng với `needs-fix` thay vì lặp tiếp.
 
 

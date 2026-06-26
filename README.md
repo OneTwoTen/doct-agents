@@ -70,6 +70,12 @@ VS Code Browser tools là built-in tools dùng để agent mở và kiểm tra t
 
 Trong VS Code, Browser tools cần được bật bằng setting `workbench.browser.enableChatTools` và được enable trong Tools picker của chat. Các trang agent mở mặc định chạy trong phiên browser riêng tư/in-memory, không dùng chung cookie hoặc storage với tab browser cá nhân.
 
+Luồng dùng đúng với integrated browser:
+
+1. Nếu muốn agent kiểm tra tab bạn đã mở thủ công trong integrated browser, bấm Share with Agent trên tab đó trước khi handoff sang `browser-agent`.
+2. Nếu để agent tự mở trang, cung cấp URL hoặc cách chạy app; agent sẽ dùng `openBrowserPage`, sau đó `readPage` để xác nhận trang.
+3. Agent ưu tiên `readPage` và các interaction tools để kiểm thử luồng người dùng. `runPlaywrightCode` chỉ dùng khi cần automation/assertion tùy biến, không phải bước mặc định để reload hoặc thay thế DevTools.
+
 ## Cấu hình MCP
 
 Chrome DevTools MCP được khai báo ở workspace config như fallback/tùy chọn chuyên sâu:
