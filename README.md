@@ -30,7 +30,7 @@
 
 Repo này không bắt buộc dùng `.github/agents/`. Nếu đặt repo ở vị trí tùy biến, hãy cấu hình VS Code để đọc thư mục `agents/`.
 
-Repo cũng có cấu hình workspace MCP ở `.vscode/mcp.json` để khai báo Chrome DevTools MCP server `chrome-devtools` cho VS Code/Copilot, và recommendation cho Microsoft Edge Tools for VS Code trong `.vscode/extensions.json`.
+Repo ưu tiên VS Code Browser tools tích hợp sẵn cho `browser-agent`. Ngoài ra, repo vẫn có cấu hình workspace MCP ở `.vscode/mcp.json` để khai báo Chrome DevTools MCP server `chrome-devtools` như một tùy chọn debug chuyên sâu, và recommendation cho Microsoft Edge Tools for VS Code trong `.vscode/extensions.json`.
 
 ## Cấu hình VS Code
 
@@ -57,11 +57,22 @@ Workspace này cũng gợi ý cài Microsoft Edge Tools for VS Code:
 }
 ```
 
-Settings mặc định cho extension nằm trong `.vscode/settings.json`, gồm host `localhost`, port `9222`, user data dir tách biệt và web root là `${workspaceFolder}`.
+Settings mặc định trong `.vscode/settings.json` bật VS Code Browser chat tools bằng `workbench.browser.enableChatTools`, đồng thời giữ cấu hình Microsoft Edge Tools for VS Code gồm host `localhost`, port `9222`, user data dir tách biệt và web root là `${workspaceFolder}`.
+
+## Cấu hình VS Code Browser tools
+
+VS Code Browser tools là built-in tools dùng để agent mở và kiểm tra trang trong browser tích hợp. `browser-agent` dùng trực tiếp các tool này trong frontmatter:
+
+- `openBrowserPage`, `navigatePage`: mở hoặc điều hướng trang.
+- `readPage`, `screenshotPage`: đọc nội dung/structure và chụp ảnh trang.
+- `clickElement`, `hoverElement`, `dragElement`, `typeInPage`, `handleDialog`: tương tác với UI.
+- `runPlaywrightCode`: chạy automation/kiểm tra tùy biến bằng Playwright.
+
+Trong VS Code, Browser tools cần được bật bằng setting `workbench.browser.enableChatTools` và được enable trong Tools picker của chat. Các trang agent mở mặc định chạy trong phiên browser riêng tư/in-memory, không dùng chung cookie hoặc storage với tab browser cá nhân.
 
 ## Cấu hình MCP
 
-Chrome DevTools MCP được khai báo ở workspace config:
+Chrome DevTools MCP được khai báo ở workspace config như fallback/tùy chọn chuyên sâu:
 
 ```json
 {
@@ -74,13 +85,13 @@ Chrome DevTools MCP được khai báo ở workspace config:
 }
 ```
 
-Trong custom agent, cấp quyền gọi toàn bộ tool của server bằng `chrome-devtools/*` trong frontmatter `tools`.
+Nếu một custom agent cần dùng trực tiếp toàn bộ tool của server MCP này, cấp quyền bằng `chrome-devtools/*` trong frontmatter `tools`. `browser-agent` hiện không phụ thuộc MCP này vì đã dùng VS Code Browser tools tích hợp sẵn.
 
 Ghi chú:
 
 - VS Code cần trust MCP server trước khi tool sẵn sàng trong chat.
 - Máy chạy agent cần có Node.js/npm để `npx` tải và chạy `chrome-devtools-mcp`.
-- Chỉ agent thật sự cần thao tác trình duyệt mới nên có `chrome-devtools/*`; hiện tại quyền này chỉ cấp cho `browser-agent`.
+- Chỉ agent thật sự cần DevTools MCP chuyên sâu mới nên có `chrome-devtools/*`; luồng kiểm tra UI mặc định nên dùng VS Code Browser tools.
 - Microsoft Edge Tools for VS Code là extension VS Code, không phải MCP server trong repo này. Không thêm `vscode-edge-devtools` vào frontmatter `tools` nếu extension chưa expose agent tool tương ứng trong VS Code.
 
 ## Agent hiện có
@@ -88,7 +99,7 @@ Ghi chú:
 | Agent | Khi nào dùng | Tools | User invocable | Model gợi ý |
 | --- | --- | --- | --- | --- |
 | `orchestrator` | Chia nhỏ tác vụ kỹ thuật phức tạp, giao việc cho subagent và hợp nhất kết quả cuối. | `agent`, `read`, `search`, `todo`, `vscode/askQuestions` | Có | GPT-5.4 |
-| `browser-agent` | Kiểm tra ứng dụng web trong Chrome bằng Chrome DevTools MCP: DOM, console, network, screenshot, trace hiệu năng hoặc lỗi UI/runtime. | `read`, `search`, `execute`, `chrome-devtools/*` | Không | Raptor mini |
+| `browser-agent` | Kiểm tra ứng dụng web bằng VS Code Browser tools: mở trang, đọc nội dung, tương tác, chụp screenshot, chạy Playwright hoặc xác nhận lỗi UI/runtime. | `read`, `search`, `execute`, `openBrowserPage`, `navigatePage`, `readPage`, `screenshotPage`, `clickElement`, `hoverElement`, `dragElement`, `typeInPage`, `handleDialog`, `runPlaywrightCode` | Không | Raptor mini |
 | `cli-executor` | Chạy terminal/CLI, thu stdout/stderr/exit code/log và phân loại kết quả thành lỗi, tiếp tục hoặc hoàn tất. | `execute`, `read`, `agent`, `vscode/askQuestions` | Có | GPT-5.4 |
 | `aggregator-agent` | Tổng hợp findings từ nhiều subagent, khử trùng lặp và sắp xếp theo mức độ nghiêm trọng. | Không có | Không | GPT-5.4 mini |
 | `agent-authoring` | Tạo hoặc cập nhật VS Code custom agents hay agent skills đúng cấu trúc workspace. | `read`, `search`, `edit`, `web`, `vscode/askQuestions` | Không | GPT-5 mini |
@@ -160,7 +171,7 @@ Ghi chú:
 - Nếu agent gọi subagent, phải có `agent` trong `tools` và liệt kê subagent trong `agents`.
 - Agent read-only không được có `edit`; agent không cần chạy lệnh không nên có `execute`.
 - Agent có thể gặp việc ngoài quyền của mình nên có đường handoff tối thiểu qua `agent` thay vì hỏi người dùng cấp thêm quyền khi repo đã có subagent phù hợp.
-- Nếu agent cần Chrome DevTools MCP, ưu tiên handoff sang `browser-agent`; chỉ cấp trực tiếp `chrome-devtools/*` cho agent có nhiệm vụ thao tác trình duyệt.
+- Nếu agent cần kiểm tra UI/browser, ưu tiên handoff sang `browser-agent`; chỉ cấp trực tiếp Browser tools hoặc `chrome-devtools/*` cho agent có nhiệm vụ thao tác trình duyệt.
 - `argument-hint` chỉ dùng khi input của agent cần được định hướng rõ.
 - `user-invocable` chỉ bật cho `orchestrator` và `cli-executor`; phần lớn worker còn lại dùng qua orchestrator.
 
@@ -168,7 +179,7 @@ Ghi chú:
 
 - Muốn chạy terminal, chạy project, dev server, test, build, audit, migrate, seed, codegen hoặc script nghiệp vụ nội bộ trực tiếp: chọn `cli-executor`.
 - Muốn làm việc phức tạp cần chia nhỏ, ví dụ review tổng hợp, tối ưu hiệu năng, kiểm tra bảo mật rồi đề xuất sửa: chọn `orchestrator`.
-- Muốn kiểm tra UI/runtime trong Chrome: đi qua `orchestrator` hoặc handoff sang `browser-agent` nếu phiên VS Code cho phép chọn subagent.
+- Muốn kiểm tra UI/runtime trong browser tích hợp của VS Code: đi qua `orchestrator` hoặc handoff sang `browser-agent` nếu phiên VS Code cho phép chọn subagent.
 - Nếu agent trả lời kiểu "không có quyền chạy terminal" trong khi repo có `cli-executor`, đó là lỗi điều phối. Hãy gọi lại bằng `orchestrator` hoặc `cli-executor`, kèm thư mục cần chạy.
 
 ## Quy ước tool và quyền
@@ -178,7 +189,8 @@ Ghi chú:
 - `edit`: sửa file; chỉ cấp cho agent thực sự được phép thay đổi nội dung.
 - `execute`: chạy CLI, test, audit, benchmark hoặc command kiểm chứng.
 - `agent`: giao việc cho subagent.
-- `chrome-devtools/*`: cho phép agent dùng toàn bộ tool từ Chrome DevTools MCP server `chrome-devtools`.
+- `openBrowserPage`, `navigatePage`, `readPage`, `screenshotPage`, `clickElement`, `hoverElement`, `dragElement`, `typeInPage`, `handleDialog`, `runPlaywrightCode`: VS Code Browser tools để mở, đọc, tương tác, chụp ảnh và automation trang web trong browser tích hợp.
+- `chrome-devtools/*`: cho phép agent dùng toàn bộ tool từ Chrome DevTools MCP server `chrome-devtools` khi cần debug chuyên sâu ngoài Browser tools.
 - `web`: tra cứu nguồn ngoài repo khi thông tin có thể thay đổi hoặc cần nguồn chính thức.
 - `todo`: theo dõi tác vụ nhiều bước trong orchestrator.
 - `vscode/askQuestions`: hỏi lại khi thiếu dữ liệu để tiếp tục an toàn.
@@ -191,7 +203,7 @@ Ghi chú:
 - Trước khi hỏi người dùng cấp thêm quyền cho agent hiện tại, kiểm tra xem repo đã có subagent có tool phù hợp chưa; nếu có, dùng `agent` để handoff.
 - Chỉ hỏi lại khi thiếu dữ liệu nghiệp vụ, cần xác nhận thao tác phá hủy/khó hoàn tác, cần xác thực bên ngoài hoặc chưa có agent nào trong repo có quyền phù hợp.
 - Agent chạy command nhưng không có `edit` không được tự sửa file bằng CLI; khi cần thay đổi nội dung, handoff sang `docs-agent`, `refactor-agent`, `test-agent` hoặc `agent-authoring` theo đúng phạm vi.
-- Khi cần kiểm tra UI trong Chrome, đọc console/network, chụp screenshot hoặc trace hiệu năng frontend, handoff sang `browser-agent` để gọi Chrome DevTools MCP.
+- Khi cần kiểm tra UI trong browser, đọc trang, tương tác, chụp screenshot hoặc chạy Playwright automation, handoff sang `browser-agent` để dùng VS Code Browser tools.
 - Agent không được tuyên bố sẽ nạp skill, dùng tool hoặc dùng đường dẫn tài nguyên nếu skill/tool đó chưa có trong context hiện tại hoặc chưa được kích hoạt rõ ràng.
 
 ## Quy ước chống loop vô hạn

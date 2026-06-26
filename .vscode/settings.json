@@ -1,4 +1,5 @@
 {
+  "workbench.browser.enableChatTools": true,
   "vscode-edge-devtools.headless": true,
   "vscode-edge-devtools.hostname": "localhost",
   "vscode-edge-devtools.port": 9222,
