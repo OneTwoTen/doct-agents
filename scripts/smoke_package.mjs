@@ -8,7 +8,9 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+const isWindows = process.platform === "win32";
+const npmCommand = isWindows ? "npm.cmd" : "npm";
+const npmOptions = { shell: isWindows };
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -35,7 +37,7 @@ try {
   const packed = run(
     npmCommand,
     ["pack", "--json", "--pack-destination", packDir],
-    { capture: true },
+    { ...npmOptions, capture: true },
   );
   const packResult = JSON.parse(packed.stdout);
   assert.equal(Array.isArray(packResult), true, "npm pack --json must return an array");
@@ -52,17 +54,17 @@ try {
     "--no-fund",
     "--no-package-lock",
     tarball,
-  ]);
+  ], npmOptions);
 
   const binary = join(
     installDir,
     "node_modules",
     ".bin",
-    process.platform === "win32" ? "doct-agents.cmd" : "doct-agents",
+    isWindows ? "doct-agents.cmd" : "doct-agents",
   );
   assert.equal(existsSync(binary), true, "installed package must expose doct-agents binary");
 
-  const binaryOptions = { shell: process.platform === "win32" };
+  const binaryOptions = { shell: isWindows };
   run(binary, ["install", "--target", targetDir], binaryOptions);
   const manifestPath = join(targetDir, ".doct-agents-manifest.json");
   assert.equal(existsSync(manifestPath), true, "install must create a manifest");
