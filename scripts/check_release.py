@@ -9,6 +9,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from typing import Optional
 
 SEMVER_PATTERN = re.compile(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\Z")
 
@@ -26,7 +27,7 @@ def read_package_version(package_path: Path) -> str:
     return version
 
 
-def validate_release_tag(tag: str | None, version: str) -> None:
+def validate_release_tag(tag: Optional[str], version: str) -> None:
     if not tag:
         return
     expected = f"v{version}"
@@ -37,7 +38,7 @@ def validate_release_tag(tag: str | None, version: str) -> None:
         )
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("tag", nargs="?")
     parser.add_argument(
