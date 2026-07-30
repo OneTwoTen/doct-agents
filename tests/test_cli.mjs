@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import test from "node:test";
 
 import {
@@ -42,8 +42,14 @@ function writeManifest(targetDir, manifest) {
 }
 
 test("defaultTarget resolves user and workspace scopes", () => {
-  assert.equal(defaultTarget("user", "/repo", "/home/dev"), "/home/dev/.copilot/agents");
-  assert.equal(defaultTarget("workspace", "/repo", "/home/dev"), "/repo/.github/agents");
+  assert.equal(
+    defaultTarget("user", "/repo", "/home/dev"),
+    resolve("/home/dev", ".copilot", "agents"),
+  );
+  assert.equal(
+    defaultTarget("workspace", "/repo", "/home/dev"),
+    resolve("/repo", ".github", "agents"),
+  );
 });
 
 test("install copies agents and writes a canonical manifest", () => {
@@ -207,5 +213,21 @@ test(
       (error) => error instanceof InstallConflict && error.message.includes("symbolic link"),
     );
     assert.equal(readFileSync(outside, "utf8"), "outside\n");
+  },
+);
+
+test(
+  "status and uninstall reject a symbolic-link target directory",
+  { skip: process.platform === "win32" },
+  () => {
+    const { root, sourceDir } = fixture();
+    const realTarget = join(root, "real-target");
+    const linkedTarget = join(root, "linked-target");
+    installAgents({ sourceDir, targetDir: realTarget });
+    symlinkSync(realTarget, linkedTarget, "dir");
+
+    assert.throws(() => getStatus(linkedTarget), InstallConflict);
+    assert.throws(() => uninstallAgents(linkedTarget, { force: true }), InstallConflict);
+    assert.equal(existsSync(join(realTarget, "orchestrator.agent.md")), true);
   },
 );
