@@ -104,6 +104,25 @@ class ValidateAgentsTest(unittest.TestCase):
         )
         self.assertTrue(any("requires the 'agent' tool" in error for error in errors))
 
+    def test_rejects_worker_subagent_routing(self) -> None:
+        errors = self.validate_files(
+            {
+                "orchestrator.agent.md": agent_text(
+                    "orchestrator",
+                    tools=["agent"],
+                    agents=["worker", "peer"],
+                    user_invocable=True,
+                ),
+                "worker.agent.md": agent_text(
+                    "worker", tools=["agent"], agents=["peer"]
+                ),
+                "peer.agent.md": agent_text("peer", tools=["read"]),
+            }
+        )
+        self.assertTrue(
+            any("only orchestrator may reference subagents" in error for error in errors)
+        )
+
     def test_rejects_unapproved_edit_execute_pair(self) -> None:
         errors = self.validate_files(
             {"worker.agent.md": agent_text("worker", tools=["edit", "execute"])}
@@ -138,6 +157,45 @@ class ValidateAgentsTest(unittest.TestCase):
         orchestrator_text = orchestrator_path.read_text(encoding="utf-8")
         self.assertIn("bắt buộc handoff sang `implementation-agent`", orchestrator_text)
         self.assertIn("không được trả patch hoặc code copy-paste", orchestrator_text)
+
+    def test_repository_supports_long_running_workflow(self) -> None:
+        repository_root = Path(__file__).resolve().parents[1]
+        agents_directory = repository_root / "agents"
+
+        architecture_path = agents_directory / "architecture-agent.agent.md"
+        planning_path = agents_directory / "planning-agent.agent.md"
+        orchestrator_path = agents_directory / "orchestrator.agent.md"
+        docs_path = agents_directory / "docs-agent.agent.md"
+        implementation_path = agents_directory / "implementation-agent.agent.md"
+        review_path = agents_directory / "review-agent.agent.md"
+
+        self.assertTrue(architecture_path.exists())
+        self.assertTrue(planning_path.exists())
+
+        architecture = validate_agents.parse_frontmatter(architecture_path)
+        planning = validate_agents.parse_frontmatter(planning_path)
+        self.assertFalse(architecture["user-invocable"])
+        self.assertFalse(planning["user-invocable"])
+        self.assertNotIn("agent", architecture["tools"])
+        self.assertNotIn("agent", planning["tools"])
+
+        orchestrator = validate_agents.parse_frontmatter(orchestrator_path)
+        self.assertIn("architecture-agent", orchestrator["agents"])
+        self.assertIn("planning-agent", orchestrator["agents"])
+
+        orchestrator_text = orchestrator_path.read_text(encoding="utf-8")
+        self.assertIn("LONG_RUNNING", orchestrator_text)
+        self.assertIn("DOCS_IMPACT", orchestrator_text)
+        self.assertIn("independent-analysis", orchestrator_text)
+        self.assertIn("autonomous blocker policy", orchestrator_text.lower())
+
+        docs_text = docs_path.read_text(encoding="utf-8")
+        implementation_text = implementation_path.read_text(encoding="utf-8")
+        review_text = review_path.read_text(encoding="utf-8")
+        self.assertIn("impact-update", docs_text)
+        self.assertIn("Docs impact candidates", implementation_text)
+        self.assertIn("`milestone`", review_text)
+        self.assertIn("`final`", review_text)
 
 
 if __name__ == "__main__":
