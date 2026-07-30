@@ -78,8 +78,20 @@ function assertRegularManagedFile(path, filename) {
   return entry;
 }
 
-function prepareTarget(targetDir) {
+function validateExistingTarget(targetDir) {
   const target = resolve(targetDir);
+  const entry = entryAt(target);
+  if (entry?.isSymbolicLink()) {
+    throw new InstallConflict(`Target must not be a symbolic link: ${target}`);
+  }
+  if (entry && !entry.isDirectory()) {
+    throw new InstallConflict(`Target must be a directory: ${target}`);
+  }
+  return target;
+}
+
+function prepareTarget(targetDir) {
+  const target = validateExistingTarget(targetDir);
   mkdirSync(target, { recursive: true });
   const entry = entryAt(target);
   if (!entry || !entry.isDirectory() || entry.isSymbolicLink()) {
@@ -115,7 +127,7 @@ export function defaultTarget(scope, workspace = process.cwd(), home = homedir()
 }
 
 export function loadManifest(targetDir) {
-  const target = resolve(targetDir);
+  const target = validateExistingTarget(targetDir);
   const path = manifestPath(target);
   const entry = entryAt(path);
   if (!entry) return canonicalManifest({});
@@ -235,7 +247,7 @@ export function installAgents({ sourceDir = BUNDLED_AGENTS, targetDir, force = f
 }
 
 export function getStatus(targetDir) {
-  const target = resolve(targetDir);
+  const target = validateExistingTarget(targetDir);
   const manifest = loadManifest(target);
   const installed = [];
   const modified = [];
@@ -251,7 +263,7 @@ export function getStatus(targetDir) {
 }
 
 export function uninstallAgents(targetDir, { force = false } = {}) {
-  const target = resolve(targetDir);
+  const target = validateExistingTarget(targetDir);
   const manifest = loadManifest(target);
   const preserved = [];
   const remaining = {};
