@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import stat
@@ -15,7 +16,7 @@ import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path, PurePosixPath
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 REPOSITORY = "OneTwoTen/doct-agents"
 PACKAGE_NAME = "doct-agents"
@@ -55,6 +56,10 @@ def canonical_manifest(files: dict[str, str]) -> dict[str, object]:
     }
 
 
+def normalize_target(target_dir: Path) -> Path:
+    return Path(os.path.abspath(str(target_dir.expanduser())))
+
+
 def validate_managed_filename(filename: str) -> str:
     if (
         not isinstance(filename, str)
@@ -88,10 +93,21 @@ def assert_regular_managed_file(path: Path, filename: str) -> bool:
 
 
 def prepare_target(target_dir: Path) -> Path:
-    target = target_dir.expanduser().resolve()
+    target = normalize_target(target_dir)
+    if target.is_symlink():
+        raise InstallConflict(f"Target must not be a symbolic link: {target}")
     target.mkdir(parents=True, exist_ok=True)
-    if target.is_symlink() or not target.is_dir():
-        raise InstallConflict(f"Target must be a real directory: {target}")
+    if not target.is_dir():
+        raise InstallConflict(f"Target must be a directory: {target}")
+    return target
+
+
+def validate_existing_target(target_dir: Path) -> Path:
+    target = normalize_target(target_dir)
+    if target.is_symlink():
+        raise InstallConflict(f"Target must not be a symbolic link: {target}")
+    if target.exists() and not target.is_dir():
+        raise InstallConflict(f"Target must be a directory: {target}")
     return target
 
 
@@ -120,7 +136,7 @@ def sha256(path: Path) -> str:
 
 
 def load_manifest(target_dir: Path) -> dict[str, object]:
-    target_dir = target_dir.expanduser().resolve()
+    target_dir = validate_existing_target(target_dir)
     path = manifest_path(target_dir)
     if path.is_symlink():
         raise InstallConflict(f"Installer manifest is a symbolic link: {path}")
@@ -234,7 +250,7 @@ def install_agents(source_dir: Path, target_dir: Path, *, force: bool = False) -
 
 
 def get_status(target_dir: Path) -> InstallStatus:
-    target_dir = target_dir.expanduser().resolve()
+    target_dir = validate_existing_target(target_dir)
     manifest = load_manifest(target_dir)
     files = manifest["files"]
     assert isinstance(files, dict)
@@ -254,7 +270,7 @@ def get_status(target_dir: Path) -> InstallStatus:
 
 
 def uninstall_agents(target_dir: Path, *, force: bool = False) -> UninstallResult:
-    target_dir = target_dir.expanduser().resolve()
+    target_dir = validate_existing_target(target_dir)
     manifest = load_manifest(target_dir)
     files = manifest["files"]
     assert isinstance(files, dict)
@@ -371,7 +387,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Optional[list[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     target = args.target or default_target(args.scope, args.workspace)
 
