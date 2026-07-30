@@ -4,11 +4,12 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  symlinkSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import test from "node:test";
 
 import {
@@ -16,6 +17,8 @@ import {
   defaultTarget,
   getStatus,
   installAgents,
+  loadManifest,
+  sha256,
   uninstallAgents,
 } from "../bin/doct-agents.js";
 
@@ -26,7 +29,16 @@ function fixture() {
   mkdirSync(sourceDir);
   writeFileSync(join(sourceDir, "orchestrator.agent.md"), "orchestrator-v1\n", "utf8");
   writeFileSync(join(sourceDir, "cli-executor.agent.md"), "cli-v1\n", "utf8");
-  return { sourceDir, targetDir };
+  return { root, sourceDir, targetDir };
+}
+
+function writeManifest(targetDir, manifest) {
+  mkdirSync(targetDir, { recursive: true });
+  writeFileSync(
+    join(targetDir, ".doct-agents-manifest.json"),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+    "utf8",
+  );
 }
 
 test("defaultTarget resolves user and workspace scopes", () => {
@@ -34,13 +46,16 @@ test("defaultTarget resolves user and workspace scopes", () => {
   assert.equal(defaultTarget("workspace", "/repo", "/home/dev"), "/repo/.github/agents");
 });
 
-test("install copies agents and writes manifest", () => {
+test("install copies agents and writes a canonical manifest", () => {
   const { sourceDir, targetDir } = fixture();
   const result = installAgents({ sourceDir, targetDir });
 
   assert.equal(result.installed, 2);
   assert.equal(readFileSync(join(targetDir, "orchestrator.agent.md"), "utf8"), "orchestrator-v1\n");
-  assert.equal(existsSync(join(targetDir, ".doct-agents-manifest.json")), true);
+  const manifest = loadManifest(targetDir);
+  assert.equal(manifest.schema, 1);
+  assert.equal(manifest.package, "doct-agents");
+  assert.equal(manifest.repository, "OneTwoTen/doct-agents");
   assert.deepEqual(getStatus(targetDir).modified, []);
 });
 
@@ -87,3 +102,110 @@ test("uninstall preserves modified files by default", () => {
   assert.equal(existsSync(join(targetDir, "orchestrator.agent.md")), true);
   assert.equal(existsSync(join(targetDir, "cli-executor.agent.md")), false);
 });
+
+test("manifest rejects parent traversal before uninstall even with force", () => {
+  const { root, targetDir } = fixture();
+  const outside = join(root, "outside.agent.md");
+  writeFileSync(outside, "keep\n", "utf8");
+  writeManifest(targetDir, {
+    schema: 1,
+    package: "doct-agents",
+    files: { "../outside.agent.md": sha256(outside) },
+  });
+
+  assert.throws(() => uninstallAgents(targetDir, { force: true }), InstallConflict);
+  assert.equal(readFileSync(outside, "utf8"), "keep\n");
+});
+
+test("manifest rejects absolute managed paths", () => {
+  const { root, targetDir } = fixture();
+  const outside = join(root, "absolute.agent.md");
+  assert.equal(isAbsolute(outside), true);
+  writeFileSync(outside, "keep\n", "utf8");
+  writeManifest(targetDir, {
+    schema: 1,
+    repository: "OneTwoTen/doct-agents",
+    files: { [outside]: sha256(outside) },
+  });
+
+  assert.throws(() => getStatus(targetDir), InstallConflict);
+});
+
+test("manifest rejects unsupported schemas and invalid checksums", () => {
+  const { targetDir } = fixture();
+  writeManifest(targetDir, {
+    schema: 2,
+    package: "doct-agents",
+    files: { "orchestrator.agent.md": "0".repeat(64) },
+  });
+  assert.throws(() => loadManifest(targetDir), InstallConflict);
+
+  writeManifest(targetDir, {
+    schema: 1,
+    package: "doct-agents",
+    files: { "orchestrator.agent.md": "not-a-sha256" },
+  });
+  assert.throws(() => loadManifest(targetDir), InstallConflict);
+});
+
+test("manifest accepts legacy package-only and repository-only identifiers", () => {
+  const { root } = fixture();
+  for (const [name, identity] of [
+    ["package", { package: "doct-agents" }],
+    ["repository", { repository: "OneTwoTen/doct-agents" }],
+  ]) {
+    const targetDir = join(root, `legacy-${name}`);
+    mkdirSync(targetDir);
+    const destination = join(targetDir, "orchestrator.agent.md");
+    writeFileSync(destination, "installed\n", "utf8");
+    writeManifest(targetDir, {
+      schema: 1,
+      ...identity,
+      files: { "orchestrator.agent.md": sha256(destination) },
+    });
+
+    assert.deepEqual(getStatus(targetDir).installed, ["orchestrator.agent.md"]);
+  }
+});
+
+test("update removes unchanged obsolete managed agents", () => {
+  const { sourceDir, targetDir } = fixture();
+  installAgents({ sourceDir, targetDir });
+  unlinkSync(join(sourceDir, "cli-executor.agent.md"));
+
+  installAgents({ sourceDir, targetDir });
+
+  assert.equal(existsSync(join(targetDir, "cli-executor.agent.md")), false);
+  assert.equal("cli-executor.agent.md" in loadManifest(targetDir).files, false);
+});
+
+test("update preserves modified obsolete agents and keeps them managed", () => {
+  const { sourceDir, targetDir } = fixture();
+  installAgents({ sourceDir, targetDir });
+  writeFileSync(join(targetDir, "cli-executor.agent.md"), "local-cli\n", "utf8");
+  unlinkSync(join(sourceDir, "cli-executor.agent.md"));
+
+  installAgents({ sourceDir, targetDir });
+
+  assert.equal(readFileSync(join(targetDir, "cli-executor.agent.md"), "utf8"), "local-cli\n");
+  assert.deepEqual(getStatus(targetDir).modified, ["cli-executor.agent.md"]);
+  assert.equal("cli-executor.agent.md" in loadManifest(targetDir).files, true);
+});
+
+test(
+  "install rejects a symbolic-link destination even with force",
+  { skip: process.platform === "win32" },
+  () => {
+    const { root, sourceDir, targetDir } = fixture();
+    mkdirSync(targetDir);
+    const outside = join(root, "outside.agent.md");
+    writeFileSync(outside, "outside\n", "utf8");
+    symlinkSync(outside, join(targetDir, "orchestrator.agent.md"));
+
+    assert.throws(
+      () => installAgents({ sourceDir, targetDir, force: true }),
+      (error) => error instanceof InstallConflict && error.message.includes("symbolic link"),
+    );
+    assert.equal(readFileSync(outside, "utf8"), "outside\n");
+  },
+);
