@@ -169,6 +169,22 @@ class ValidateAgentsTest(unittest.TestCase):
             any("unsupported status value 'retry-later'" in error for error in errors)
         )
 
+    def test_rejects_fully_unknown_declared_status_values(self) -> None:
+        errors = self.validate_files(
+            {
+                "worker.agent.md": agent_text(
+                    "worker",
+                    tools=["read"],
+                    body="- `Status`: `success | retry-later`.",
+                )
+            }
+        )
+
+        self.assertTrue(any("unsupported status value 'success'" in error for error in errors))
+        self.assertTrue(
+            any("unsupported status value 'retry-later'" in error for error in errors)
+        )
+
     def test_accepts_common_declared_status_values(self) -> None:
         errors = self.validate_files(
             {
@@ -176,6 +192,20 @@ class ValidateAgentsTest(unittest.TestCase):
                     "worker",
                     tools=["read"],
                     body="- `Status`: `completed | needs-info | blocked | failed`.",
+                )
+            }
+        )
+
+        self.assertEqual([], errors)
+
+    def test_accepts_docs_impact_status_values(self) -> None:
+        errors = self.validate_files(
+            {
+                "orchestrator.agent.md": agent_text(
+                    "orchestrator",
+                    tools=["read"],
+                    user_invocable=True,
+                    body="- `Status`: `required | not-required | uncertain`.",
                 )
             }
         )
