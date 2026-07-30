@@ -23,6 +23,7 @@ PACKAGE_NAME = "doct-agents"
 DEFAULT_REF = "main"
 MANIFEST_NAME = ".doct-agents-manifest.json"
 SHA256_PATTERN = re.compile(r"[a-fA-F0-9]{64}\Z")
+REPARSE_POINT_ATTRIBUTE = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
 
 
 class InstallConflict(RuntimeError):
@@ -56,6 +57,10 @@ def canonical_manifest(files: dict[str, str]) -> dict[str, object]:
     }
 
 
+def manifest_text(files: dict[str, str]) -> str:
+    return json.dumps(canonical_manifest(files), indent=2, sort_keys=True) + "\n"
+
+
 def normalize_target(target_dir: Path) -> Path:
     return Path(os.path.abspath(str(target_dir.expanduser())))
 
@@ -82,31 +87,70 @@ def managed_path(target_dir: Path, filename: str) -> Path:
     return destination
 
 
-def assert_regular_managed_file(path: Path, filename: str) -> bool:
-    if path.is_symlink():
-        raise InstallConflict(f"Managed agent {filename} is a symbolic link")
-    if not path.exists():
+def is_link_like(stat_result: os.stat_result) -> bool:
+    attributes = getattr(stat_result, "st_file_attributes", 0)
+    return stat.S_ISLNK(stat_result.st_mode) or bool(
+        attributes & REPARSE_POINT_ATTRIBUTE
+    )
+
+
+def lstat_or_none(path: Path) -> Optional[os.stat_result]:
+    try:
+        return os.lstat(path)
+    except FileNotFoundError:
+        return None
+
+
+def assert_regular_path(path: Path, label: str) -> bool:
+    entry = lstat_or_none(path)
+    if entry is None:
         return False
-    if not path.is_file():
-        raise InstallConflict(f"Managed agent {filename} is not a regular file")
+    if is_link_like(entry):
+        raise InstallConflict(f"{label} is a symbolic link or junction")
+    if not stat.S_ISREG(entry.st_mode):
+        raise InstallConflict(f"{label} is not a regular file")
     return True
 
 
-def prepare_target(target_dir: Path) -> Path:
+def assert_regular_managed_file(path: Path, filename: str) -> bool:
+    return assert_regular_path(path, f"Managed agent {filename}")
+
+
+def validate_path_components(target_dir: Path) -> Path:
     target = normalize_target(target_dir)
-    if target.is_symlink():
-        raise InstallConflict(f"Target must not be a symbolic link: {target}")
+    parts = target.parts
+    if not parts:
+        raise InstallConflict(f"Invalid target path: {target}")
+
+    current = Path(parts[0])
+    for part in parts[1:]:
+        current = current / part
+        entry = lstat_or_none(current)
+        if entry is None:
+            break
+        if is_link_like(entry):
+            raise InstallConflict(
+                f"Target path component is a symbolic link or junction: {current}"
+            )
+        if current != target and not stat.S_ISDIR(entry.st_mode):
+            raise InstallConflict(f"Target path component is not a directory: {current}")
+    return target
+
+
+def prepare_target(target_dir: Path) -> Path:
+    target = validate_existing_target(target_dir)
     target.mkdir(parents=True, exist_ok=True)
-    if not target.is_dir():
-        raise InstallConflict(f"Target must be a directory: {target}")
+    validate_path_components(target)
+    entry = lstat_or_none(target)
+    if entry is None or is_link_like(entry) or not stat.S_ISDIR(entry.st_mode):
+        raise InstallConflict(f"Target must be a real directory: {target}")
     return target
 
 
 def validate_existing_target(target_dir: Path) -> Path:
-    target = normalize_target(target_dir)
-    if target.is_symlink():
-        raise InstallConflict(f"Target must not be a symbolic link: {target}")
-    if target.exists() and not target.is_dir():
+    target = validate_path_components(target_dir)
+    entry = lstat_or_none(target)
+    if entry is not None and not stat.S_ISDIR(entry.st_mode):
         raise InstallConflict(f"Target must be a directory: {target}")
     return target
 
@@ -117,14 +161,8 @@ def manifest_path(target_dir: Path) -> Path:
 
 def write_manifest(target_dir: Path, files: dict[str, str]) -> None:
     path = manifest_path(target_dir)
-    if path.is_symlink():
-        raise InstallConflict(f"Installer manifest is a symbolic link: {path}")
-    if path.exists() and not path.is_file():
-        raise InstallConflict(f"Installer manifest is not a regular file: {path}")
-    path.write_text(
-        json.dumps(canonical_manifest(files), indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    assert_regular_path(path, f"Installer manifest {path}")
+    path.write_text(manifest_text(files), encoding="utf-8")
 
 
 def sha256(path: Path) -> str:
@@ -138,12 +176,8 @@ def sha256(path: Path) -> str:
 def load_manifest(target_dir: Path) -> dict[str, object]:
     target_dir = validate_existing_target(target_dir)
     path = manifest_path(target_dir)
-    if path.is_symlink():
-        raise InstallConflict(f"Installer manifest is a symbolic link: {path}")
-    if not path.exists():
+    if not assert_regular_path(path, f"Installer manifest {path}"):
         return canonical_manifest({})
-    if not path.is_file():
-        raise InstallConflict(f"Installer manifest is not a regular file: {path}")
 
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -188,9 +222,128 @@ def find_agent_files(source_dir: Path) -> list[Path]:
         raise FileNotFoundError(f"No *.agent.md files found in {source_dir}")
     for source in files:
         validate_managed_filename(source.name)
-        if source.is_symlink() or not source.is_file():
+        entry = lstat_or_none(source)
+        if entry is None or is_link_like(entry) or not stat.S_ISREG(entry.st_mode):
             raise InstallConflict(f"Bundled agent {source.name} must be a regular file")
     return files
+
+
+def stage_install(
+    source_dir: Path,
+    target_dir: Path,
+    sources: list[Path],
+    preserved_obsolete: dict[str, str],
+) -> Path:
+    stage = Path(
+        tempfile.mkdtemp(
+            prefix=f".{target_dir.name}.doct-agents-stage-",
+            dir=str(target_dir.parent),
+        )
+    )
+    installed_files: dict[str, str] = dict(preserved_obsolete)
+    try:
+        for source in sources:
+            staged = stage / source.name
+            shutil.copyfile(source, staged)
+            installed_files[source.name] = sha256(staged)
+        (stage / MANIFEST_NAME).write_text(
+            manifest_text(installed_files), encoding="utf-8"
+        )
+        return stage
+    except BaseException:
+        shutil.rmtree(stage, ignore_errors=True)
+        raise
+
+
+def commit_staged_install(
+    target_dir: Path,
+    stage: Path,
+    sources: list[Path],
+    obsolete_to_remove: list[Path],
+) -> None:
+    backup = Path(
+        tempfile.mkdtemp(
+            prefix=f".{target_dir.name}.doct-agents-backup-",
+            dir=str(target_dir.parent),
+        )
+    )
+    records: list[dict[str, object]] = []
+    preserve_backup = False
+
+    def replace_from_stage(
+        staged: Path, destination: Path, backup_name: str, label: str
+    ) -> None:
+        existing = assert_regular_path(destination, label)
+        backup_path = backup / backup_name
+        record: dict[str, object] = {
+            "destination": destination,
+            "backup": backup_path,
+            "had_original": existing,
+            "installed_new": False,
+        }
+        if existing:
+            os.replace(destination, backup_path)
+        records.append(record)
+        os.replace(staged, destination)
+        record["installed_new"] = True
+
+    try:
+        validate_path_components(target_dir)
+        for source in sources:
+            destination = managed_path(target_dir, source.name)
+            replace_from_stage(
+                stage / source.name,
+                destination,
+                source.name,
+                f"Managed agent {source.name}",
+            )
+
+        for destination in obsolete_to_remove:
+            filename = destination.name
+            assert_regular_managed_file(destination, filename)
+            backup_path = backup / filename
+            os.replace(destination, backup_path)
+            records.append(
+                {
+                    "destination": destination,
+                    "backup": backup_path,
+                    "had_original": True,
+                    "installed_new": False,
+                }
+            )
+
+        destination_manifest = manifest_path(target_dir)
+        replace_from_stage(
+            stage / MANIFEST_NAME,
+            destination_manifest,
+            MANIFEST_NAME,
+            f"Installer manifest {destination_manifest}",
+        )
+    except BaseException as exc:
+        rollback_errors: list[str] = []
+        for record in reversed(records):
+            destination = record["destination"]
+            backup_path = record["backup"]
+            assert isinstance(destination, Path)
+            assert isinstance(backup_path, Path)
+            try:
+                if bool(record["installed_new"]) and lstat_or_none(destination):
+                    destination.unlink()
+                if bool(record["had_original"]) and lstat_or_none(backup_path):
+                    os.replace(backup_path, destination)
+            except OSError as rollback_error:
+                rollback_errors.append(str(rollback_error))
+        if rollback_errors:
+            preserve_backup = True
+            raise InstallConflict(
+                f"{exc}; rollback also failed: {'; '.join(rollback_errors)}; "
+                f"backup preserved at {backup}"
+            ) from exc
+        raise
+    finally:
+        shutil.rmtree(stage, ignore_errors=True)
+        if not preserve_backup:
+            shutil.rmtree(backup, ignore_errors=True)
 
 
 def install_agents(source_dir: Path, target_dir: Path, *, force: bool = False) -> InstallResult:
@@ -236,16 +389,8 @@ def install_agents(source_dir: Path, target_dir: Path, *, force: bool = False) -
             "Re-run with --force only when replacing those files is intentional."
         )
 
-    for obsolete in obsolete_to_remove:
-        obsolete.unlink()
-
-    installed_files: dict[str, str] = dict(preserved_obsolete)
-    for source in sources:
-        target = managed_path(target_dir, source.name)
-        shutil.copyfile(source, target)
-        installed_files[source.name] = sha256(target)
-
-    write_manifest(target_dir, installed_files)
+    stage = stage_install(source_dir, target_dir, sources, preserved_obsolete)
+    commit_staged_install(target_dir, stage, sources, obsolete_to_remove)
     return InstallResult(installed=len(sources), target=target_dir)
 
 
@@ -294,9 +439,8 @@ def uninstall_agents(target_dir: Path, *, force: bool = False) -> UninstallResul
     path = manifest_path(target_dir)
     if remaining:
         write_manifest(target_dir, remaining)
-    elif path.is_symlink():
-        raise InstallConflict(f"Installer manifest is a symbolic link: {path}")
-    elif path.exists():
+    elif lstat_or_none(path):
+        assert_regular_path(path, f"Installer manifest {path}")
         path.unlink()
 
     return UninstallResult(len(remove_paths), preserved, target_dir)
@@ -305,7 +449,7 @@ def uninstall_agents(target_dir: Path, *, force: bool = False) -> UninstallResul
 def default_target(scope: str, workspace: Path) -> Path:
     if scope == "user":
         return Path.home() / ".copilot" / "agents"
-    return workspace.resolve() / ".github" / "agents"
+    return normalize_target(workspace) / ".github" / "agents"
 
 
 def safe_extract_archive(archive: zipfile.ZipFile, destination: Path) -> None:
