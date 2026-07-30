@@ -13,6 +13,7 @@ from pathlib import Path
 REQUIRED_FIELDS = {"name", "description", "tools", "agents", "user-invocable"}
 USER_INVOCABLE_ALLOWLIST = {"orchestrator", "cli-executor"}
 EDIT_EXECUTE_ALLOWLIST = {"test-agent"}
+SUBAGENT_ROUTER_ALLOWLIST = {"orchestrator"}
 
 
 @dataclass(frozen=True)
@@ -113,6 +114,10 @@ def validate(directory: Path) -> list[str]:
             errors.append(f"{agent.path}: non-empty agents requires the 'agent' tool")
         if "agent" in agent.tools and not agent.agents:
             errors.append(f"{agent.path}: 'agent' tool requires at least one allowed agent")
+        if agent.name not in SUBAGENT_ROUTER_ALLOWLIST and (
+            agent.agents or "agent" in agent.tools
+        ):
+            errors.append(f"{agent.path}: only orchestrator may reference subagents")
         if agent.user_invocable and agent.name not in USER_INVOCABLE_ALLOWLIST:
             errors.append(f"{agent.path}: '{agent.name}' is not allowed to be user-invocable")
         if "edit" in agent.tools and "execute" in agent.tools and agent.name not in EDIT_EXECUTE_ALLOWLIST:
