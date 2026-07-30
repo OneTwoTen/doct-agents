@@ -100,7 +100,9 @@ Chỉ dùng `--force` khi thật sự muốn thay thế chỉnh sửa cục bộ
 npx doct-agents@latest update --scope user --force
 ```
 
-`--force` không bỏ qua kiểm tra an toàn đường dẫn. Manifest có path không hợp lệ, target là symbolic link hoặc agent được quản lý là symbolic link đều làm installer dừng trước khi copy/xóa file.
+`--force` không bỏ qua kiểm tra an toàn đường dẫn. Manifest có path không hợp lệ, target hoặc một thư mục cha là symbolic link/junction, manifest là symbolic link hoặc agent được quản lý là symbolic link đều làm installer dừng trước khi copy/xóa file.
+
+Update stage toàn bộ agent mới và manifest trước khi thay đổi target. Khi commit gặp lỗi, installer rollback các file đã thay thế; nếu rollback cũng lỗi, thư mục backup được giữ lại và đường dẫn được báo trong error.
 
 Sau khi update agent, chạy `Developer: Reload Window` và mở chat mới để VS Code nạp lại frontmatter, tool và subagent routing.
 
@@ -379,22 +381,22 @@ npm run test:python
 npm run validate
 npm run pack:check
 npm run smoke:package
-npm run release:check
+RELEASE_TAG=v0.2.1 npm run release:check
 ```
 
 CI chạy ba lane: Node 18/Python 3.9 trên Ubuntu, runtime hiện tại trên Ubuntu và runtime hiện tại trên Windows.
 
 ## Publish lên npm
 
-Package dùng tên `doct-agents` và executable cùng tên. Workflow `.github/workflows/publish-npm.yml` publish khi tạo GitHub Release hoặc chạy thủ công.
+Package dùng tên `doct-agents` và executable cùng tên. Workflow `.github/workflows/publish-npm.yml` publish khi tạo GitHub Release hoặc chạy thủ công với input tag bắt buộc.
 
 Quy trình release:
 
 1. Tăng `version` trong `package.json`.
 2. Merge thay đổi vào `main`.
-3. Tạo GitHub Release cùng version, ví dụ `v0.2.1`.
-4. Workflow chạy `npm run check`.
-5. Workflow xác nhận release tag đúng bằng `v${package.json.version}` rồi mới chạy `npm publish`.
+3. Tạo GitHub Release cùng version, ví dụ `v0.2.1`; hoặc chạy workflow thủ công và nhập đúng tag đã tồn tại.
+4. Workflow checkout chính tag đó và chạy `npm run check`.
+5. Workflow xác nhận tag đúng bằng `v${package.json.version}` rồi mới chạy `npm publish`.
 
 Nếu workflow vẫn dùng token cho publish, repository cần secret `NPM_TOKEN`. Sau khi Trusted Publishing được cấu hình, có thể dùng OIDC thay token dài hạn.
 
@@ -403,7 +405,8 @@ Nếu workflow vẫn dùng token cho publish, repository cần secret `NPM_TOKEN
 ```text
 .
 ├── agents/                       # Agent source và nội dung npm package
-├── bin/doct-agents.js            # CLI cho npx, bunx và pnpm dlx
+├── bin/cli.js                    # npm executable cho npx, bunx và pnpm dlx
+├── bin/doct-agents.js            # CLI implementation và installer logic
 ├── docs/superpowers/             # Design specs và implementation plans
 ├── install.py                    # Installer Python fallback
 ├── package.json                  # npm package metadata và bin mapping
