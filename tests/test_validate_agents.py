@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +10,7 @@ MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "validate_agents
 SPEC = importlib.util.spec_from_file_location("validate_agents", MODULE_PATH)
 validate_agents = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
+sys.modules[SPEC.name] = validate_agents
 SPEC.loader.exec_module(validate_agents)
 
 
