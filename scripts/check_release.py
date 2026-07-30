@@ -29,7 +29,7 @@ def read_package_version(package_path: Path) -> str:
 
 def validate_release_tag(tag: Optional[str], version: str) -> None:
     if not tag:
-        return
+        raise ValueError("release tag is required")
     expected = f"v{version}"
     if tag != expected:
         raise ValueError(
@@ -56,10 +56,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
-    if tag:
-        print(f"Release tag {tag} matches package version {version}.")
-    else:
-        print(f"Package version {version} is valid; no release tag was supplied.")
+    print(f"Release tag {tag} matches package version {version}.")
     return 0
 
 
