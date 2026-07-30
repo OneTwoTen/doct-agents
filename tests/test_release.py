@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -35,8 +36,29 @@ class CheckReleaseTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "expected v1.2.3"):
             check_release.validate_release_tag("1.2.3", "1.2.3")
 
-    def test_manual_dispatch_without_tag_is_allowed(self) -> None:
-        check_release.validate_release_tag(None, "1.2.3")
+    def test_rejects_missing_release_tag(self) -> None:
+        with self.assertRaisesRegex(ValueError, "release tag is required"):
+            check_release.validate_release_tag(None, "1.2.3")
+
+    def test_publish_workflow_checks_out_and_validates_explicit_tag(self) -> None:
+        workflow = (
+            Path(__file__).resolve().parents[1]
+            / ".github"
+            / "workflows"
+            / "publish-npm.yml"
+        ).read_text(encoding="utf-8")
+
+        self.assertRegex(
+            workflow,
+            re.compile(
+                r"workflow_dispatch:\s+inputs:\s+tag:\s+description:.*?required:\s*true",
+                re.DOTALL,
+            ),
+        )
+        self.assertGreaterEqual(
+            workflow.count("github.event.release.tag_name || inputs.tag"),
+            2,
+        )
 
 
 if __name__ == "__main__":
