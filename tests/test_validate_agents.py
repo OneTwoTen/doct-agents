@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Optional
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "validate_agents.py"
 SPEC = importlib.util.spec_from_file_location("validate_agents", MODULE_PATH)
@@ -17,8 +18,8 @@ SPEC.loader.exec_module(validate_agents)
 def agent_text(
     name: str,
     *,
-    tools: list[str] | None = None,
-    agents: list[str] | None = None,
+    tools: Optional[list[str]] = None,
+    agents: Optional[list[str]] = None,
     user_invocable: bool = False,
     body: str = "",
 ) -> str:
