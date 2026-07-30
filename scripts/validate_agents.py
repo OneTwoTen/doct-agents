@@ -15,7 +15,6 @@ USER_INVOCABLE_ALLOWLIST = {"orchestrator", "cli-executor"}
 EDIT_EXECUTE_ALLOWLIST = {"test-agent"}
 SUBAGENT_ROUTER_ALLOWLIST = {"orchestrator"}
 COMMON_WORKER_STATUSES = {"completed", "needs-info", "blocked", "failed"}
-NONSTANDARD_WORKER_STATUSES = {"done", "needs-fix", "continue"}
 STATUS_LINE_PATTERN = re.compile(r"^\s*-\s*`?Status`?\s*:\s*(.+)$", re.MULTILINE)
 BACKTICK_VALUE_PATTERN = re.compile(r"`([^`]+)`")
 
@@ -146,7 +145,8 @@ def validate(directory: Path) -> list[str]:
             errors.append(f"{agent.path}: duplicate agent reference")
 
         text = agent.path.read_text(encoding="utf-8")
-        for status in sorted(declared_status_values(text) & NONSTANDARD_WORKER_STATUSES):
+        declared = declared_status_values(text)
+        for status in sorted(declared - COMMON_WORKER_STATUSES):
             errors.append(
                 f"{agent.path}: unsupported status value '{status}'; "
                 f"worker statuses are {', '.join(sorted(COMMON_WORKER_STATUSES))}"
