@@ -233,25 +233,25 @@ test(
   },
 );
 
-test(
-  "install rejects a symbolic-link ancestor before creating the target",
-  { skip: process.platform === "win32" },
-  () => {
-    const { root, sourceDir } = fixture();
-    const outside = join(root, "outside");
-    const workspace = join(root, "workspace");
-    mkdirSync(outside);
-    mkdirSync(workspace);
-    symlinkSync(outside, join(workspace, ".github"), "dir");
-    const targetDir = join(workspace, ".github", "agents");
+test("install rejects a linked ancestor before creating the target", () => {
+  const { root, sourceDir } = fixture();
+  const outside = join(root, "outside");
+  const workspace = join(root, "workspace");
+  mkdirSync(outside);
+  mkdirSync(workspace);
+  symlinkSync(
+    outside,
+    join(workspace, ".github"),
+    process.platform === "win32" ? "junction" : "dir",
+  );
+  const targetDir = join(workspace, ".github", "agents");
 
-    assert.throws(
-      () => installAgents({ sourceDir, targetDir }),
-      (error) => error instanceof InstallConflict && error.message.includes("symbolic link"),
-    );
-    assert.equal(existsSync(join(outside, "agents")), false);
-  },
-);
+  assert.throws(
+    () => installAgents({ sourceDir, targetDir }),
+    (error) => error instanceof InstallConflict && error.message.includes("symbolic link"),
+  );
+  assert.equal(existsSync(join(outside, "agents")), false);
+});
 
 test(
   "update stages every source before mutating the target",
