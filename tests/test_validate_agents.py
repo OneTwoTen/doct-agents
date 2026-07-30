@@ -154,6 +154,21 @@ class ValidateAgentsTest(unittest.TestCase):
             any("unsupported status value 'needs-fix'" in error for error in errors)
         )
 
+    def test_rejects_unknown_declared_status_value(self) -> None:
+        errors = self.validate_files(
+            {
+                "worker.agent.md": agent_text(
+                    "worker",
+                    tools=["read"],
+                    body="- `Status`: `completed | retry-later | failed`.",
+                )
+            }
+        )
+
+        self.assertTrue(
+            any("unsupported status value 'retry-later'" in error for error in errors)
+        )
+
     def test_accepts_common_declared_status_values(self) -> None:
         errors = self.validate_files(
             {
@@ -177,7 +192,6 @@ class ValidateAgentsTest(unittest.TestCase):
             implementation_path.exists(),
             "production code changes need a dedicated implementation-agent",
         )
-
         implementation = validate_agents.parse_frontmatter(implementation_path)
         self.assertIn("edit", implementation["tools"])
         self.assertNotIn("agent", implementation["tools"])
