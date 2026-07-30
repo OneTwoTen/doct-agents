@@ -224,6 +224,45 @@ class InstallAgentsTest(unittest.TestCase):
 
         self.assertEqual("outside", outside.read_text(encoding="utf-8"))
 
+    @unittest.skipIf(os.name == "nt", "creating directory symlinks requires Windows privileges")
+    def test_install_rejects_symbolic_link_ancestor_before_creating_target(self) -> None:
+        outside = self.root / "outside"
+        workspace = self.root / "workspace"
+        outside.mkdir()
+        workspace.mkdir()
+        (workspace / ".github").symlink_to(outside, target_is_directory=True)
+        target = workspace / ".github" / "agents"
+
+        with self.assertRaisesRegex(installer.InstallConflict, "symbolic link"):
+            installer.install_agents(self.source, target)
+
+        self.assertFalse((outside / "agents").exists())
+
+    @unittest.skipIf(os.name == "nt", "permission-based copy failure is POSIX-specific")
+    def test_update_stages_every_source_before_mutating_target(self) -> None:
+        installer.install_agents(self.source, self.target)
+        manifest_path = self.target / installer.MANIFEST_NAME
+        original_manifest = manifest_path.read_text(encoding="utf-8")
+        (self.source / "orchestrator.agent.md").write_text("upstream", encoding="utf-8")
+        unreadable = self.source / "review-agent.agent.md"
+        unreadable.chmod(0)
+
+        try:
+            with self.assertRaises(OSError):
+                installer.install_agents(self.source, self.target)
+        finally:
+            unreadable.chmod(0o600)
+
+        self.assertEqual(
+            "---\nname: orchestrator\n---\n",
+            (self.target / "orchestrator.agent.md").read_text(encoding="utf-8"),
+        )
+        self.assertEqual(
+            "---\nname: review-agent\n---\n",
+            (self.target / "review-agent.agent.md").read_text(encoding="utf-8"),
+        )
+        self.assertEqual(original_manifest, manifest_path.read_text(encoding="utf-8"))
+
     def test_safe_extract_rejects_parent_traversal(self) -> None:
         archive_path = self.root / "unsafe.zip"
         with zipfile.ZipFile(archive_path, "w") as archive:
