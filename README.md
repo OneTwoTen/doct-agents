@@ -9,6 +9,8 @@ Yêu cầu:
 - VS Code có GitHub Copilot Chat.
 - Một trong các runtime: Node.js 18+, Bun hoặc Python 3.9+.
 
+> Các lệnh `npx`, `bunx` và `pnpm dlx` bên dưới hoạt động sau khi package `doct-agents` được publish lần đầu lên npm.
+
 ### Cài bằng npx
 
 Cài cho toàn bộ project trên máy:
@@ -247,10 +249,11 @@ NPM_TOKEN
 
 Quy trình release:
 
-1. Tăng `version` trong `package.json`.
-2. Merge thay đổi vào `main`.
-3. Tạo GitHub Release tương ứng, ví dụ `v0.1.0`.
-4. Workflow chạy test, `npm pack --dry-run`, sau đó `npm publish --provenance`.
+1. Xác nhận tên package `doct-agents` còn khả dụng hoặc đổi `name` trong `package.json`.
+2. Tăng `version` trong `package.json`.
+3. Merge thay đổi vào `main`.
+4. Tạo GitHub Release tương ứng, ví dụ `v0.1.0`.
+5. Workflow chạy test, `npm pack --dry-run`, sau đó `npm publish --provenance`.
 
 Sau lần publish đầu tiên, các lệnh `npx doct-agents@latest` và `bunx doct-agents@latest` hoạt động trực tiếp.
 
