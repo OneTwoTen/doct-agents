@@ -20,6 +20,7 @@ def agent_text(
     tools: list[str] | None = None,
     agents: list[str] | None = None,
     user_invocable: bool = False,
+    body: str = "",
 ) -> str:
     return "\n".join(
         [
@@ -33,6 +34,7 @@ def agent_text(
             "",
             f"# {name}",
             "",
+            body,
         ]
     )
 
@@ -133,6 +135,35 @@ class ValidateAgentsTest(unittest.TestCase):
         errors = self.validate_files(
             {"test-agent.agent.md": agent_text("test-agent", tools=["edit", "execute"])}
         )
+        self.assertEqual([], errors)
+
+    def test_rejects_nonstandard_declared_status_values(self) -> None:
+        errors = self.validate_files(
+            {
+                "worker.agent.md": agent_text(
+                    "worker",
+                    tools=["read"],
+                    body="- `Status`: `done | needs-fix | blocked`.",
+                )
+            }
+        )
+
+        self.assertTrue(any("unsupported status value 'done'" in error for error in errors))
+        self.assertTrue(
+            any("unsupported status value 'needs-fix'" in error for error in errors)
+        )
+
+    def test_accepts_common_declared_status_values(self) -> None:
+        errors = self.validate_files(
+            {
+                "worker.agent.md": agent_text(
+                    "worker",
+                    tools=["read"],
+                    body="- `Status`: `completed | needs-info | blocked | failed`.",
+                )
+            }
+        )
+
         self.assertEqual([], errors)
 
     def test_repository_has_production_implementation_route(self) -> None:
