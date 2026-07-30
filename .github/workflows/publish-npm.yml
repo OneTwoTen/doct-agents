@@ -1,0 +1,42 @@
+name: Publish npm package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Update npm
+        run: npm install --global npm@latest
+
+      - name: Show publishing tool versions
+        run: |
+          node --version
+          npm --version
+
+      - name: Run Node CLI tests
+        run: npm test
+
+      - name: Validate package contents
+        run: npm pack --dry-run
+
+      - name: Publish
+        run: npm publish --access public
+        env:
+          # Used for the first publish. After npm Trusted Publishing is configured,
+          # the OIDC identity from id-token: write is preferred automatically.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

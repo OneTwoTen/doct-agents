@@ -4,15 +4,21 @@ on:
   pull_request:
     paths:
       - "agents/**"
+      - "bin/**"
+      - "package.json"
+      - "install.py"
       - "scripts/validate_agents.py"
-      - "tests/test_validate_agents.py"
+      - "tests/**"
       - ".github/workflows/validate-agents.yml"
   push:
     branches: [main]
     paths:
       - "agents/**"
+      - "bin/**"
+      - "package.json"
+      - "install.py"
       - "scripts/validate_agents.py"
-      - "tests/test_validate_agents.py"
+      - "tests/**"
       - ".github/workflows/validate-agents.yml"
 
 permissions:
@@ -23,10 +29,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Run validator unit tests
+      - name: Run Node CLI tests
+        run: npm test
+      - name: Verify npm package contents
+        run: npm pack --dry-run
+      - name: Run Python installer and validator tests
         run: python -m unittest discover -s tests -v
       - name: Validate repository agents
         run: python scripts/validate_agents.py
