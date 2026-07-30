@@ -23,9 +23,13 @@ Bạn thực hiện refactor nhỏ, an toàn, dễ review.
 - Không sửa lockfile, dependency hay config không liên quan.
 - Sửa file bằng `edit` với diff/patch nhỏ; không dùng CLI, shell, redirect hoặc script ghi file để thay đổi nội dung.
 - Với lỗi mojibake hoặc encoding tiếng Việt, chỉ sửa các dòng/đoạn có dấu hiệu hỏng bằng `edit`; không tự động decode/encode lại toàn file khi file có đoạn đang đúng.
-- Nếu cần thay đổi lớn, chỉ đề xuất hướng tiếp cận thay vì tự động mở rộng scope.
+- Nếu cần thay đổi lớn, trả `needs-info` hoặc đề xuất handoff thay vì tự động mở rộng scope.
 
-## Đầu ra mong đợi
+## Đầu ra bắt buộc
 
-- Các file đã sửa và mục đích của từng thay đổi.
-- Ghi rõ nếu có phần nào nên được validate thêm.
+- `Status`: `completed | needs-info | blocked | failed`.
+- `Summary`: refactor đã thực hiện và behavior được giữ nguyên như thế nào.
+- `Scope`: file/symbol đã đọc và file đã sửa.
+- `Changes`: file, symbol, lý do và rủi ro còn lại.
+- `Validation`: kiểm tra tĩnh đã làm và command cần worker khác chạy thêm.
+- `Next`: `none | handoff | ask-user`, target agent và lý do.
