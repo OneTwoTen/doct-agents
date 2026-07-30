@@ -232,6 +232,7 @@ function stageInstall(sourceDir, target, files, preservedObsolete) {
 function commitStagedInstall(target, stage, files, obsoleteToRemove) {
   const backup = mkdtempSync(join(dirname(target), `.${basename(target)}.doct-agents-backup-`));
   const records = [];
+  let preserveBackup = false;
 
   function replaceFromStage(staged, destination, backupName, label) {
     const existing = assertRegularPath(destination, label);
@@ -283,14 +284,16 @@ function commitStagedInstall(target, stage, files, obsoleteToRemove) {
       }
     }
     if (rollbackErrors.length) {
+      preserveBackup = true;
       throw new InstallConflict(
-        `${error.message}; rollback also failed: ${rollbackErrors.join("; ")}`,
+        `${error.message}; rollback also failed: ${rollbackErrors.join("; ")}; ` +
+          `backup preserved at ${backup}`,
       );
     }
     throw error;
   } finally {
     rmSync(stage, { recursive: true, force: true });
-    rmSync(backup, { recursive: true, force: true });
+    if (!preserveBackup) rmSync(backup, { recursive: true, force: true });
   }
 }
 
