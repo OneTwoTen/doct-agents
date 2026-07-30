@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -19,7 +26,7 @@ function fixture() {
   mkdirSync(sourceDir);
   writeFileSync(join(sourceDir, "orchestrator.agent.md"), "orchestrator-v1\n", "utf8");
   writeFileSync(join(sourceDir, "cli-executor.agent.md"), "cli-v1\n", "utf8");
-  return { root, sourceDir, targetDir };
+  return { sourceDir, targetDir };
 }
 
 test("defaultTarget resolves user and workspace scopes", () => {
@@ -63,7 +70,6 @@ test("status reports modified and missing files", () => {
   const { sourceDir, targetDir } = fixture();
   installAgents({ sourceDir, targetDir });
   writeFileSync(join(targetDir, "orchestrator.agent.md"), "changed\n", "utf8");
-  const { unlinkSync } = await import("node:fs");
   unlinkSync(join(targetDir, "cli-executor.agent.md"));
 
   const status = getStatus(targetDir);
