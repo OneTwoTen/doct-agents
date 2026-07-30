@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-const repositoryRoot = resolve(import.meta.dirname, "..");
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 
 function run(command, args, options = {}) {
@@ -28,6 +29,7 @@ const root = mkdtempSync(join(tmpdir(), "doct-agents-package-smoke-"));
 const packDir = join(root, "pack");
 const installDir = join(root, "install");
 const targetDir = join(root, "agents");
+mkdirSync(packDir, { recursive: true });
 
 try {
   const packed = run(
