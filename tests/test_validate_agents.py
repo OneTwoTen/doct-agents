@@ -116,6 +116,29 @@ class ValidateAgentsTest(unittest.TestCase):
         )
         self.assertEqual([], errors)
 
+    def test_repository_has_production_implementation_route(self) -> None:
+        repository_root = Path(__file__).resolve().parents[1]
+        agents_directory = repository_root / "agents"
+        implementation_path = agents_directory / "implementation-agent.agent.md"
+        orchestrator_path = agents_directory / "orchestrator.agent.md"
+
+        self.assertTrue(
+            implementation_path.exists(),
+            "production code changes need a dedicated implementation-agent",
+        )
+
+        implementation = validate_agents.parse_frontmatter(implementation_path)
+        self.assertIn("edit", implementation["tools"])
+        self.assertNotIn("agent", implementation["tools"])
+        self.assertFalse(implementation["user-invocable"])
+
+        orchestrator = validate_agents.parse_frontmatter(orchestrator_path)
+        self.assertIn("implementation-agent", orchestrator["agents"])
+
+        orchestrator_text = orchestrator_path.read_text(encoding="utf-8")
+        self.assertIn("bắt buộc handoff sang `implementation-agent`", orchestrator_text)
+        self.assertIn("không được trả patch hoặc code copy-paste", orchestrator_text)
+
 
 if __name__ == "__main__":
     unittest.main()
