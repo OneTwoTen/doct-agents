@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -229,5 +230,52 @@ test(
     assert.throws(() => getStatus(linkedTarget), InstallConflict);
     assert.throws(() => uninstallAgents(linkedTarget, { force: true }), InstallConflict);
     assert.equal(existsSync(join(realTarget, "orchestrator.agent.md")), true);
+  },
+);
+
+test(
+  "install rejects a symbolic-link ancestor before creating the target",
+  { skip: process.platform === "win32" },
+  () => {
+    const { root, sourceDir } = fixture();
+    const outside = join(root, "outside");
+    const workspace = join(root, "workspace");
+    mkdirSync(outside);
+    mkdirSync(workspace);
+    symlinkSync(outside, join(workspace, ".github"), "dir");
+    const targetDir = join(workspace, ".github", "agents");
+
+    assert.throws(
+      () => installAgents({ sourceDir, targetDir }),
+      (error) => error instanceof InstallConflict && error.message.includes("symbolic link"),
+    );
+    assert.equal(existsSync(join(outside, "agents")), false);
+  },
+);
+
+test(
+  "update stages every source before mutating the target",
+  { skip: process.platform === "win32" },
+  () => {
+    const { sourceDir, targetDir } = fixture();
+    installAgents({ sourceDir, targetDir });
+    const manifestPath = join(targetDir, ".doct-agents-manifest.json");
+    const originalManifest = readFileSync(manifestPath, "utf8");
+    writeFileSync(join(sourceDir, "cli-executor.agent.md"), "cli-v2\n", "utf8");
+    const unreadable = join(sourceDir, "orchestrator.agent.md");
+    chmodSync(unreadable, 0o000);
+
+    try {
+      assert.throws(() => installAgents({ sourceDir, targetDir }));
+    } finally {
+      chmodSync(unreadable, 0o600);
+    }
+
+    assert.equal(readFileSync(join(targetDir, "cli-executor.agent.md"), "utf8"), "cli-v1\n");
+    assert.equal(
+      readFileSync(join(targetDir, "orchestrator.agent.md"), "utf8"),
+      "orchestrator-v1\n",
+    );
+    assert.equal(readFileSync(manifestPath, "utf8"), originalManifest);
   },
 );
