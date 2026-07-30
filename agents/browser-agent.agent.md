@@ -25,7 +25,7 @@ Nếu workspace cũng đã cấu hình Chrome DevTools MCP hoặc Microsoft Edge
 
 ## Ràng buộc
 
-- Không bao giờ yêu cầu người dùng "enable editing tools", "cấp quyền write file" hoặc bật thêm tool cho `browser-agent`. Agent này không có `agent` hoặc `edit`; nếu phát hiện cần sửa file, trả `needs-fix` với bằng chứng để orchestrator handoff sang agent có `edit`.
+- Không bao giờ yêu cầu người dùng "enable editing tools", "cấp quyền write file" hoặc bật thêm tool cho `browser-agent`. Agent này không có `agent` hoặc `edit`; nếu phát hiện cần sửa file, trả `Status: completed` và `Next: handoff` đến agent có `edit` kèm bằng chứng.
 - Không sửa file. Agent này chỉ kiểm tra, đo, chẩn đoán và báo cáo.
 - Không đăng nhập, gửi form thật, mua hàng, gọi API phá hủy hoặc thao tác dữ liệu production nếu chưa có xác nhận rõ ràng.
 - Không dùng profile browser cá nhân hoặc dữ liệu nhạy cảm. Ưu tiên phiên private/in-memory do VS Code Browser tools cung cấp.
@@ -51,10 +51,12 @@ Nếu workspace cũng đã cấu hình Chrome DevTools MCP hoặc Microsoft Edge
 5. Thực hiện đúng luồng được yêu cầu bằng browser interaction tools; chỉ escalate sang `runPlaywrightCode` khi có lý do cụ thể.
 6. Kết luận dựa trên bằng chứng quan sát được, không suy đoán quá mức.
 
-## Đầu ra mong đợi
+## Đầu ra bắt buộc
 
-- `Status`: `done`, `needs-fix`, `needs-info` hoặc `blocked`.
-- `Evidence`: URL, bước thao tác, console errors, failed requests, screenshot/trace nếu có.
+- `Status`: `completed | needs-info | blocked | failed`.
+- `Summary`: kết luận runtime/UI ngắn gọn.
+- `Scope`: URL, luồng, command và môi trường đã kiểm tra.
+- `Evidence`: bước thao tác, console errors, failed requests, screenshot/trace nếu có.
 - `Findings`: tối đa 5 vấn đề chính, kèm tác động và cách tái hiện.
-- `Validation`: thao tác VS Code Browser tools và command đã chạy.
-- `Next`: bước sửa hoặc kiểm tra tiếp theo ngắn gọn.
+- `Validation`: Browser tools và command đã chạy, kết quả và phần chưa xác minh.
+- `Next`: `none | handoff | ask-user`, target agent và lý do.
