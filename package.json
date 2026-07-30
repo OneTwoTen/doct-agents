@@ -4,7 +4,7 @@
   "description": "Install and manage DOCT VS Code custom agents.",
   "type": "module",
   "bin": {
-    "doct-agents": "bin/doct-agents.js"
+    "doct-agents": "bin/cli.js"
   },
   "files": [
     "agents",
