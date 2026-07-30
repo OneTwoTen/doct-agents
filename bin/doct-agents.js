@@ -5,13 +5,16 @@ import {
   copyFileSync,
   lstatSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   readdirSync,
+  renameSync,
+  rmSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, parse, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -41,6 +44,10 @@ function canonicalManifest(files) {
   };
 }
 
+function manifestText(files) {
+  return `${JSON.stringify(canonicalManifest(files), null, 2)}\n`;
+}
+
 export function validateManagedFilename(filename) {
   if (
     typeof filename !== "string" ||
@@ -66,24 +73,45 @@ function managedDestination(target, filename) {
   return destination;
 }
 
-function assertRegularManagedFile(path, filename) {
+function assertRegularPath(path, label) {
   const entry = entryAt(path);
   if (!entry) return null;
   if (entry.isSymbolicLink()) {
-    throw new InstallConflict(`Managed agent ${filename} is a symbolic link`);
+    throw new InstallConflict(`${label} is a symbolic link`);
   }
   if (!entry.isFile()) {
-    throw new InstallConflict(`Managed agent ${filename} is not a regular file`);
+    throw new InstallConflict(`${label} is not a regular file`);
   }
   return entry;
 }
 
-function validateExistingTarget(targetDir) {
+function assertRegularManagedFile(path, filename) {
+  return assertRegularPath(path, `Managed agent ${filename}`);
+}
+
+function validatePathComponents(targetDir) {
   const target = resolve(targetDir);
-  const entry = entryAt(target);
-  if (entry?.isSymbolicLink()) {
-    throw new InstallConflict(`Target must not be a symbolic link: ${target}`);
+  const root = parse(target).root;
+  const parts = target.slice(root.length).split(sep).filter(Boolean);
+  let current = root;
+
+  for (const part of parts) {
+    current = join(current, part);
+    const entry = entryAt(current);
+    if (!entry) break;
+    if (entry.isSymbolicLink()) {
+      throw new InstallConflict(`Target path component is a symbolic link: ${current}`);
+    }
+    if (current !== target && !entry.isDirectory()) {
+      throw new InstallConflict(`Target path component is not a directory: ${current}`);
+    }
   }
+  return target;
+}
+
+function validateExistingTarget(targetDir) {
+  const target = validatePathComponents(targetDir);
+  const entry = entryAt(target);
   if (entry && !entry.isDirectory()) {
     throw new InstallConflict(`Target must be a directory: ${target}`);
   }
@@ -93,6 +121,7 @@ function validateExistingTarget(targetDir) {
 function prepareTarget(targetDir) {
   const target = validateExistingTarget(targetDir);
   mkdirSync(target, { recursive: true });
+  validatePathComponents(target);
   const entry = entryAt(target);
   if (!entry || !entry.isDirectory() || entry.isSymbolicLink()) {
     throw new InstallConflict(`Target must be a real directory: ${target}`);
@@ -106,14 +135,8 @@ function manifestPath(target) {
 
 function writeManifest(target, files) {
   const path = manifestPath(target);
-  const entry = entryAt(path);
-  if (entry?.isSymbolicLink()) {
-    throw new InstallConflict(`Installer manifest is a symbolic link: ${path}`);
-  }
-  if (entry && !entry.isFile()) {
-    throw new InstallConflict(`Installer manifest is not a regular file: ${path}`);
-  }
-  writeFileSync(path, `${JSON.stringify(canonicalManifest(files), null, 2)}\n`, "utf8");
+  assertRegularPath(path, `Installer manifest ${path}`);
+  writeFileSync(path, manifestText(files), "utf8");
 }
 
 export function sha256(path) {
@@ -131,12 +154,7 @@ export function loadManifest(targetDir) {
   const path = manifestPath(target);
   const entry = entryAt(path);
   if (!entry) return canonicalManifest({});
-  if (entry.isSymbolicLink()) {
-    throw new InstallConflict(`Installer manifest is a symbolic link: ${path}`);
-  }
-  if (!entry.isFile()) {
-    throw new InstallConflict(`Installer manifest is not a regular file: ${path}`);
-  }
+  assertRegularPath(path, `Installer manifest ${path}`);
 
   try {
     const manifest = JSON.parse(readFileSync(path, "utf8"));
@@ -194,6 +212,88 @@ export function findAgentFiles(sourceDir = BUNDLED_AGENTS) {
   return files;
 }
 
+function stageInstall(sourceDir, target, files, preservedObsolete) {
+  const stage = mkdtempSync(join(dirname(target), `.${basename(target)}.doct-agents-stage-`));
+  const installed = { ...preservedObsolete };
+  try {
+    for (const filename of files) {
+      const staged = join(stage, filename);
+      copyFileSync(join(sourceDir, filename), staged);
+      installed[filename] = sha256(staged);
+    }
+    writeFileSync(join(stage, MANIFEST_NAME), manifestText(installed), "utf8");
+    return { stage, installed };
+  } catch (error) {
+    rmSync(stage, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+function commitStagedInstall(target, stage, files, obsoleteToRemove) {
+  const backup = mkdtempSync(join(dirname(target), `.${basename(target)}.doct-agents-backup-`));
+  const records = [];
+
+  function replaceFromStage(staged, destination, backupName, label) {
+    const existing = assertRegularPath(destination, label);
+    const backupPath = join(backup, backupName);
+    const record = { destination, backupPath, hadOriginal: Boolean(existing), installedNew: false };
+    if (existing) renameSync(destination, backupPath);
+    records.push(record);
+    renameSync(staged, destination);
+    record.installedNew = true;
+  }
+
+  try {
+    validatePathComponents(target);
+    for (const filename of files) {
+      const destination = managedDestination(target, filename);
+      replaceFromStage(
+        join(stage, filename),
+        destination,
+        filename,
+        `Managed agent ${filename}`,
+      );
+    }
+
+    for (const destination of obsoleteToRemove) {
+      const filename = basename(destination);
+      assertRegularManagedFile(destination, filename);
+      const backupPath = join(backup, filename);
+      renameSync(destination, backupPath);
+      records.push({ destination, backupPath, hadOriginal: true, installedNew: false });
+    }
+
+    const destinationManifest = manifestPath(target);
+    replaceFromStage(
+      join(stage, MANIFEST_NAME),
+      destinationManifest,
+      MANIFEST_NAME,
+      `Installer manifest ${destinationManifest}`,
+    );
+  } catch (error) {
+    const rollbackErrors = [];
+    for (const record of [...records].reverse()) {
+      try {
+        if (record.installedNew && entryAt(record.destination)) unlinkSync(record.destination);
+        if (record.hadOriginal && entryAt(record.backupPath)) {
+          renameSync(record.backupPath, record.destination);
+        }
+      } catch (rollbackError) {
+        rollbackErrors.push(rollbackError.message);
+      }
+    }
+    if (rollbackErrors.length) {
+      throw new InstallConflict(
+        `${error.message}; rollback also failed: ${rollbackErrors.join("; ")}`,
+      );
+    }
+    throw error;
+  } finally {
+    rmSync(stage, { recursive: true, force: true });
+    rmSync(backup, { recursive: true, force: true });
+  }
+}
+
 export function installAgents({ sourceDir = BUNDLED_AGENTS, targetDir, force = false }) {
   const target = prepareTarget(targetDir);
   const files = findAgentFiles(sourceDir);
@@ -232,17 +332,8 @@ export function installAgents({ sourceDir = BUNDLED_AGENTS, targetDir, force = f
     );
   }
 
-  for (const path of obsoleteToRemove) unlinkSync(path);
-
-  const installed = { ...preservedObsolete };
-  for (const filename of files) {
-    const source = join(sourceDir, filename);
-    const destination = managedDestination(target, filename);
-    copyFileSync(source, destination);
-    installed[filename] = sha256(destination);
-  }
-
-  writeManifest(target, installed);
+  const { stage } = stageInstall(sourceDir, target, files, preservedObsolete);
+  commitStagedInstall(target, stage, files, obsoleteToRemove);
   return { installed: files.length, target };
 }
 
