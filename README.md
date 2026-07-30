@@ -1,270 +1,307 @@
 # doct-agents
 
-`doct-agents` là bộ VS Code Copilot custom agents dùng cho các workflow kỹ thuật của DOCT. Mỗi agent có một vai trò hẹp, tool được cấp theo nguyên tắc least privilege, và có thể được orchestrator điều phối khi tác vụ cần nhiều bước.
+`doct-agents` là bộ custom agents cho GitHub Copilot trong VS Code, tập trung vào workflow kỹ thuật: review, sửa code, test, chạy CLI, kiểm tra browser, security, dependency và performance.
 
-## Cấu trúc repo
+## Bắt đầu nhanh
 
-```text
-.
-├── README.md
-├── .vscode/
-│   ├── extensions.json
-│   ├── mcp.json
-│   └── settings.json
-└── agents/
-    ├── agent-authoring.agent.md
-    ├── aggregator.agent.md
-    ├── browser-agent.agent.md
-    ├── cli-executor.agent.md
-    ├── dependency-agent.agent.md
-    ├── docs-agent.agent.md
-    ├── orchestrator.agent.md
-    ├── performance-agent.agent.md
-    ├── refactor-agent.agent.md
-    ├── req-extractor.agent.md
-    ├── research-agent.agent.md
-    ├── review-agent.agent.md
-    ├── security-agent.agent.md
-    └── test-agent.agent.md
+Yêu cầu:
+
+- VS Code có GitHub Copilot Chat.
+- Python 3.9 trở lên.
+- Kết nối Internet trong lần cài hoặc cập nhật.
+
+### Windows — cài cho toàn bộ project
+
+Mở PowerShell:
+
+```powershell
+$installer = Join-Path $env:TEMP "doct-agents-install.py"
+Invoke-WebRequest "https://raw.githubusercontent.com/OneTwoTen/doct-agents/main/install.py" -OutFile $installer
+py -3 $installer install --scope user
 ```
 
-Repo này không bắt buộc dùng `.github/agents/`. Nếu đặt repo ở vị trí tùy biến, hãy cấu hình VS Code để đọc thư mục `agents/`.
+Agent được cài vào:
 
-Repo ưu tiên VS Code Browser tools tích hợp sẵn cho `browser-agent`. Ngoài ra, repo vẫn có cấu hình workspace MCP ở `.vscode/mcp.json` để khai báo Chrome DevTools MCP server `chrome-devtools` như một tùy chọn debug chuyên sâu, và recommendation cho Microsoft Edge Tools for VS Code trong `.vscode/extensions.json`.
+```text
+%USERPROFILE%\.copilot\agents
+```
 
-## Cấu hình VS Code
+### macOS/Linux — cài cho toàn bộ project
 
-Ví dụ khi dùng trực tiếp trong repo hiện tại hoặc khi nhúng repo này vào project khác:
+```bash
+curl -fsSL https://raw.githubusercontent.com/OneTwoTen/doct-agents/main/install.py \
+  -o /tmp/doct-agents-install.py
+python3 /tmp/doct-agents-install.py install --scope user
+```
+
+Agent được cài vào:
+
+```text
+~/.copilot/agents
+```
+
+### Cài riêng cho project hiện tại
+
+Chạy tại thư mục gốc của project:
+
+```bash
+python install.py install --scope workspace
+```
+
+Hoặc chạy file installer đã tải ở phần trên với `--scope workspace`. Agent sẽ được đặt trong:
+
+```text
+.github/agents
+```
+
+Đây là vị trí workspace mặc định của VS Code, vì vậy không cần tự sửa `chat.agentFilesLocations`.
+
+## Dùng trong VS Code
+
+Sau khi cài:
+
+1. Reload VS Code bằng lệnh `Developer: Reload Window`.
+2. Mở GitHub Copilot Chat.
+3. Gõ `/agents` hoặc mở danh sách agent ở cuối ô chat.
+4. Chọn một trong hai agent chính:
+   - `orchestrator`: task phức tạp cần chia nhỏ, review, sửa và validate.
+   - `cli-executor`: chạy project, test, build, lint, migrate, seed hoặc script.
+
+Các worker khác mặc định được gọi qua `orchestrator`, không cần chọn thủ công.
+
+### Prompt mẫu
+
+Review và sửa một PR:
+
+```text
+Review PR này theo hướng correctness và test gap. Chỉ sửa finding high/critical, sau đó chạy test hẹp nhất để validate.
+```
+
+Tối ưu hiệu năng:
+
+```text
+Phân tích điểm nghẽn của module order, đo baseline trước, đề xuất thay đổi nhỏ và validate bằng benchmark liên quan.
+```
+
+Chạy project:
+
+```text
+Chạy project ở thư mục backend, tìm đúng command từ cấu hình repo, báo URL hoặc lỗi quyết định.
+```
+
+Kiểm tra UI:
+
+```text
+Mở http://localhost:3000, kiểm tra luồng đăng nhập, chụp screenshot ở bước lỗi và báo expected/actual.
+```
+
+## Cập nhật
+
+Dùng lại installer với lệnh `update`.
+
+Windows:
+
+```powershell
+py -3 $env:TEMP\doct-agents-install.py update --scope user
+```
+
+macOS/Linux:
+
+```bash
+python3 /tmp/doct-agents-install.py update --scope user
+```
+
+Cập nhật cho workspace hiện tại:
+
+```bash
+python install.py update --scope workspace
+```
+
+Installer chỉ ghi đè các file do `doct-agents` quản lý. Nếu một agent đã được chỉnh sửa cục bộ, quá trình cập nhật sẽ dừng để tránh mất dữ liệu. Chỉ dùng `--force` khi thực sự muốn thay thế các chỉnh sửa đó:
+
+```bash
+python install.py update --scope user --force
+```
+
+## Kiểm tra trạng thái
+
+```bash
+python install.py status --scope user
+```
+
+Kết quả phân biệt:
+
+- `Installed`: file còn nguyên như lần cài gần nhất.
+- `Modified`: file đã được chỉnh sửa cục bộ.
+- `Missing`: file do installer quản lý nhưng đã bị xóa.
+
+Kiểm tra workspace hiện tại:
+
+```bash
+python install.py status --scope workspace
+```
+
+## Gỡ cài đặt
+
+```bash
+python install.py uninstall --scope user
+```
+
+Installer chỉ xóa file còn đúng checksum đã cài. File đã chỉnh sửa sẽ được giữ lại. Để xóa cả file đã chỉnh sửa:
+
+```bash
+python install.py uninstall --scope user --force
+```
+
+## Chọn scope nào?
+
+| Nhu cầu | Scope | Vị trí |
+| --- | --- | --- |
+| Dùng agent cho mọi project | `user` | `~/.copilot/agents` |
+| Team muốn version agent cùng source code | `workspace` | `.github/agents` |
+| Phát triển chính repo này | Chạy trực tiếp repo | `agents/` qua `.vscode/settings.json` |
+
+Khuyến nghị:
+
+- Cá nhân: dùng `--scope user`.
+- Project/team: commit `.github/agents` vào project hoặc dùng Git submodule nếu muốn cập nhật tập trung.
+
+## Agent chính
+
+| Agent | Vai trò |
+| --- | --- |
+| `orchestrator` | Route workflow, chia task, quản lý state/budget và tổng hợp kết quả. |
+| `cli-executor` | Chạy terminal/CLI và trả command, cwd, exit code, log quyết định. |
+| `review-agent` | Review read-only về correctness, test gap và maintainability. |
+| `refactor-agent` | Refactor nhỏ, an toàn, không đổi public behavior. |
+| `test-agent` | Viết/cập nhật test và chạy validation hẹp. |
+| `browser-agent` | Kiểm tra UI/runtime bằng VS Code Browser tools. |
+| `security-agent` | Security review read-only. |
+| `dependency-agent` | Audit dependency, lockfile và vulnerability. |
+| `performance-agent` | Benchmark và phân tích bottleneck dựa trên số liệu. |
+| `research-agent` | Tra cứu thông tin kỹ thuật ngoài repo. |
+| `docs-agent` | Cập nhật tài liệu. |
+| `req-extractor` | Chuẩn hóa yêu cầu, constraint và acceptance criteria. |
+| `aggregator-agent` | Khử trùng lặp findings từ nhiều worker. |
+| `agent-authoring` | Tạo/cập nhật custom agent và skill. |
+
+## Browser tools và MCP
+
+`browser-agent` ưu tiên VS Code Browser tools tích hợp:
+
+- `openBrowserPage`, `navigatePage`, `readPage`, `screenshotPage`.
+- `clickElement`, `hoverElement`, `dragElement`, `typeInPage`, `handleDialog`.
+- `runPlaywrightCode` chỉ dùng khi interaction tools không đủ.
+
+Bật trong VS Code:
+
+```json
+{
+  "workbench.browser.enableChatTools": true
+}
+```
+
+Nếu cần trace hoặc DevTools chuyên sâu, repo có cấu hình Chrome DevTools MCP tùy chọn trong `.vscode/mcp.json`. Luồng UI thông thường không phụ thuộc MCP này.
+
+## Dùng như Git submodule
+
+Dành cho team muốn pin một revision của bộ agent trong project:
+
+```bash
+git submodule add https://github.com/OneTwoTen/doct-agents.git third_party/doct-agents
+git submodule update --init --recursive
+python third_party/doct-agents/install.py install --scope workspace \
+  --source-dir third_party/doct-agents/agents
+```
+
+Cập nhật:
+
+```bash
+git submodule update --remote --merge
+python third_party/doct-agents/install.py update --scope workspace \
+  --source-dir third_party/doct-agents/agents
+```
+
+## Dùng trực tiếp thư mục tùy biến
+
+Khi không muốn copy agent vào `.github/agents`, có thể cấu hình VS Code đọc thư mục khác:
 
 ```json
 {
   "chat.agentFilesLocations": {
-    "agents": true,
     "third_party/doct-agents/agents": true
   }
 }
 ```
 
-Nếu sau này thêm skills ở vị trí tùy biến, cấu hình tương tự với `chat.agentSkillsLocations`.
+Cách này phù hợp với submodule nhưng phụ thuộc workspace settings. Với người dùng thông thường, installer vẫn là cách đơn giản hơn.
 
-Workspace này cũng gợi ý cài Microsoft Edge Tools for VS Code:
+## Quy tắc orchestration
 
-```json
-{
-  "recommendations": [
-    "ms-edgedevtools.vscode-edge-devtools"
-  ]
-}
-```
-
-Settings mặc định trong `.vscode/settings.json` bật VS Code Browser chat tools bằng `workbench.browser.enableChatTools`, đồng thời giữ cấu hình Microsoft Edge Tools for VS Code gồm host `localhost`, port `9222`, user data dir tách biệt và web root là `${workspaceFolder}`.
-
-## Cấu hình VS Code Browser tools
-
-VS Code Browser tools là built-in tools dùng để agent mở và kiểm tra trang trong browser tích hợp. `browser-agent` dùng trực tiếp các tool này trong frontmatter:
-
-- `openBrowserPage`, `navigatePage`: mở hoặc điều hướng trang.
-- `readPage`, `screenshotPage`: đọc nội dung/structure và chụp ảnh trang.
-- `clickElement`, `hoverElement`, `dragElement`, `typeInPage`, `handleDialog`: tương tác với UI.
-- `runPlaywrightCode`: chạy automation/kiểm tra tùy biến bằng Playwright.
-
-Trong VS Code, Browser tools cần được bật bằng setting `workbench.browser.enableChatTools` và được enable trong Tools picker của chat. Các trang agent mở mặc định chạy trong phiên browser riêng tư/in-memory, không dùng chung cookie hoặc storage với tab browser cá nhân.
-
-Luồng dùng đúng với integrated browser:
-
-1. Nếu muốn agent kiểm tra tab bạn đã mở thủ công trong integrated browser, bấm Share with Agent trên tab đó trước khi handoff sang `browser-agent`.
-2. Nếu để agent tự mở trang, cung cấp URL hoặc cách chạy app; agent sẽ dùng `openBrowserPage`, sau đó `readPage` để xác nhận trang.
-3. Agent ưu tiên `readPage` và các interaction tools để kiểm thử luồng người dùng. `runPlaywrightCode` chỉ dùng khi cần automation/assertion tùy biến, không phải bước mặc định để reload hoặc thay thế DevTools.
-
-## Cấu hình MCP
-
-Chrome DevTools MCP được khai báo ở workspace config như fallback/tùy chọn chuyên sâu:
-
-```json
-{
-  "servers": {
-    "chrome-devtools": {
-      "command": "npx",
-      "args": ["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics"]
-    }
-  }
-}
-```
-
-Nếu một custom agent cần dùng trực tiếp toàn bộ tool của server MCP này, cấp quyền bằng `chrome-devtools/*` trong frontmatter `tools`. `browser-agent` hiện không phụ thuộc MCP này vì đã dùng VS Code Browser tools tích hợp sẵn.
-
-Ghi chú:
-
-- VS Code cần trust MCP server trước khi tool sẵn sàng trong chat.
-- Máy chạy agent cần có Node.js/npm để `npx` tải và chạy `chrome-devtools-mcp`.
-- Chỉ agent thật sự cần DevTools MCP chuyên sâu mới nên có `chrome-devtools/*`; luồng kiểm tra UI mặc định nên dùng VS Code Browser tools.
-- Microsoft Edge Tools for VS Code là extension VS Code, không phải MCP server trong repo này. Không thêm `vscode-edge-devtools` vào frontmatter `tools` nếu extension chưa expose agent tool tương ứng trong VS Code.
-
-## Agent hiện có
-
-| Agent | Khi nào dùng | Tools | User invocable | Model gợi ý |
-| --- | --- | --- | --- | --- |
-| `orchestrator` | Chia nhỏ tác vụ kỹ thuật phức tạp, giao việc cho subagent và hợp nhất kết quả cuối. | `agent`, `read`, `search`, `todo`, `vscode/askQuestions` | Có | GPT-5.4 |
-| `browser-agent` | Kiểm tra ứng dụng web bằng VS Code Browser tools: mở trang, đọc nội dung, tương tác, chụp screenshot, chạy Playwright hoặc xác nhận lỗi UI/runtime. | `read`, `search`, `execute`, `openBrowserPage`, `navigatePage`, `readPage`, `screenshotPage`, `clickElement`, `hoverElement`, `dragElement`, `typeInPage`, `handleDialog`, `runPlaywrightCode` | Không | Raptor mini |
-| `cli-executor` | Chạy terminal/CLI, thu stdout/stderr/exit code/log và phân loại kết quả thành lỗi, tiếp tục hoặc hoàn tất. | `execute`, `read`, `agent`, `vscode/askQuestions` | Có | GPT-5.4 |
-| `aggregator-agent` | Tổng hợp findings từ nhiều subagent, khử trùng lặp và sắp xếp theo mức độ nghiêm trọng. | Không có | Không | GPT-5.4 mini |
-| `agent-authoring` | Tạo hoặc cập nhật VS Code custom agents hay agent skills đúng cấu trúc workspace. | `read`, `search`, `edit`, `web`, `vscode/askQuestions` | Không | GPT-5 mini |
-| `dependency-agent` | Kiểm tra package manager, lockfile, gói lỗi thời, vulnerability và hướng nâng cấp an toàn. | `read`, `search`, `execute`, `agent` | Không | Raptor mini |
-| `docs-agent` | Tạo/cập nhật README, hướng dẫn cài đặt, onboarding notes hoặc tài liệu nội bộ ngắn. | `read`, `search`, `edit` | Không | GPT-5 mini |
-| `performance-agent` | Phân tích benchmark, hiệu năng thực tế, điểm nghẽn hoặc so sánh với baseline. | `read`, `search`, `execute`, `agent` | Không | Raptor mini |
-| `refactor-agent` | Refactor nhỏ, giữ nguyên hành vi, cải thiện readability hoặc giảm trùng lặp trong phạm vi hẹp. | `read`, `search`, `edit` | Không | Raptor mini |
-| `req-extractor` | Chuyển brief/ticket/yêu cầu mơ hồ thành requirements, constraints, acceptance criteria và câu hỏi làm rõ. | `read`, `search`, `vscode/askQuestions` | Không | GPT-5 mini |
-| `research-agent` | Thu thập thông tin bên ngoài repo từ nguồn đáng tin để hỗ trợ quyết định kỹ thuật/kiến trúc. | `web`, `read`, `search` | Không | GPT-5 mini |
-| `review-agent` | Review code read-only theo mode `qa` hoặc `quality`, tập trung bug, test gap, maintainability, lint/type/error handling. | `read`, `search`, `execute`, `agent` | Không | Raptor mini |
-| `security-agent` | Security review read-only để tìm secrets, cấu hình không an toàn hoặc flow/code path rủi ro. | `read`, `search` | Không | GPT-5 mini |
-| `test-agent` | Thêm/cập nhật test tự động, tìm coverage gaps và chạy tập test hẹp nhất liên quan. | `read`, `search`, `edit`, `execute` | Không | Raptor mini |
-
-Các file agent hiện chưa pin `model` trong frontmatter, nên VS Code sẽ dùng model đang chọn hoặc model fallback của phiên chat. Cột `Model gợi ý` chỉ là định hướng vận hành; chỉ thêm `model` vào frontmatter khi tên model đã được xác nhận có sẵn trong VS Code/Copilot của workspace.
-
-## Nhóm vai trò
-
-- Điều phối: `orchestrator`
-- Kiểm tra trình duyệt: `browser-agent`
-- Chạy lệnh: `cli-executor`
-- Tổng hợp: `aggregator-agent`
-- Tạo/cập nhật customization: `agent-authoring`
-- Phân tích yêu cầu: `req-extractor`
-- Tài liệu và research: `docs-agent`, `research-agent`
-- Chất lượng code: `review-agent`, `refactor-agent`, `test-agent`
-- Rủi ro vận hành: `security-agent`, `dependency-agent`, `performance-agent`
-
-## Cách sử dụng
-
-### Dùng như Git submodule
-
-```bash
-git submodule add https://github.com/OneTwoTen/doct-agents.git third_party/doct-agents
-git submodule update --init --recursive
-```
-
-Cập nhật submodule:
-
-```bash
-git submodule update --remote --merge
-```
-
-### Dùng như Git subtree
-
-```bash
-git subtree add --prefix=third_party/doct-agents https://github.com/OneTwoTen/doct-agents.git main --squash
-```
-
-## Frontmatter chuẩn
-
-Mỗi file `.agent.md` nên có frontmatter theo các trường đang dùng trong repo:
-
-```yaml
----
-name: agent-name
-description: "Mô tả rõ khi nào nên dùng agent."
-argument-hint: "Tùy chọn, chỉ thêm khi agent cần gợi ý input."
-tools: ["read", "search"]
-agents: []
-user-invocable: false
-model: GPT-5 mini (copilot)
----
-```
-
-Ghi chú:
-
-- `description` phải đủ cụ thể để VS Code discover đúng agent.
-- `tools` chỉ cấp quyền tối thiểu cần thiết.
-- Nếu agent gọi subagent, phải có `agent` trong `tools` và liệt kê subagent trong `agents`.
-- Agent read-only không được có `edit`; agent không cần chạy lệnh không nên có `execute`.
-- Agent có thể gặp việc ngoài quyền của mình nên có đường handoff tối thiểu qua `agent` thay vì hỏi người dùng cấp thêm quyền khi repo đã có subagent phù hợp.
-- Nếu agent cần kiểm tra UI/browser, ưu tiên handoff sang `browser-agent`; chỉ cấp trực tiếp Browser tools hoặc `chrome-devtools/*` cho agent có nhiệm vụ thao tác trình duyệt.
-- `argument-hint` chỉ dùng khi input của agent cần được định hướng rõ.
-- `user-invocable` chỉ bật cho `orchestrator` và `cli-executor`; phần lớn worker còn lại dùng qua orchestrator.
-
-## Cách gọi nhanh
-
-- Muốn chạy terminal, chạy project, dev server, test, build, audit, migrate, seed, codegen hoặc script nghiệp vụ nội bộ trực tiếp: chọn `cli-executor`.
-- Muốn làm việc phức tạp cần chia nhỏ, ví dụ review tổng hợp, tối ưu hiệu năng, kiểm tra bảo mật rồi đề xuất sửa: chọn `orchestrator`.
-- Muốn kiểm tra UI/runtime trong browser tích hợp của VS Code: đi qua `orchestrator` hoặc handoff sang `browser-agent` nếu phiên VS Code cho phép chọn subagent.
-- Nếu agent trả lời kiểu "không có quyền chạy terminal" trong khi repo có `cli-executor`, đó là lỗi điều phối. Hãy gọi lại bằng `orchestrator` hoặc `cli-executor`, kèm thư mục cần chạy.
-
-## Quy ước tool và quyền
-
-- `read`: đọc file hoặc đoạn nội dung đã xác định.
-- `search`: tìm file, symbol hoặc đoạn liên quan trước khi đọc rộng.
-- `edit`: sửa file; chỉ cấp cho agent thực sự được phép thay đổi nội dung.
-- `execute`: chạy CLI, test, audit, benchmark hoặc command kiểm chứng.
-- `agent`: giao việc cho subagent.
-- `openBrowserPage`, `navigatePage`, `readPage`, `screenshotPage`, `clickElement`, `hoverElement`, `dragElement`, `typeInPage`, `handleDialog`, `runPlaywrightCode`: VS Code Browser tools để mở, đọc, tương tác, chụp ảnh và automation trang web trong browser tích hợp.
-- `chrome-devtools/*`: cho phép agent dùng toàn bộ tool từ Chrome DevTools MCP server `chrome-devtools` khi cần debug chuyên sâu ngoài Browser tools.
-- `web`: tra cứu nguồn ngoài repo khi thông tin có thể thay đổi hoặc cần nguồn chính thức.
-- `todo`: theo dõi tác vụ nhiều bước trong orchestrator.
-- `vscode/askQuestions`: hỏi lại khi thiếu dữ liệu để tiếp tục an toàn.
-
-## Quy ước điều phối quyền
-
-- Agent không được yêu cầu người dùng "enable editing tools", "cấp quyền write file" hoặc bật thêm quyền/tool khi frontmatter hiện tại không có tool đó. Tool của agent là cấu hình tĩnh; nếu thiếu quyền, agent phải handoff sang agent có quyền phù hợp hoặc trả `blocked`/`needs-fix` với lý do rõ ràng.
-- Agent không được nói "tôi không có quyền chạy terminal" nếu agent hiện tại có thể handoff sang `cli-executor` hoặc một subagent có `execute`.
-- Agent đã có `edit` trong frontmatter phải dùng `edit` trực tiếp cho tác vụ nằm trong phạm vi của mình, không hỏi lại người dùng để cấp quyền sửa file.
-- Trước khi hỏi người dùng cấp thêm quyền cho agent hiện tại, kiểm tra xem repo đã có subagent có tool phù hợp chưa; nếu có, dùng `agent` để handoff.
-- Chỉ hỏi lại khi thiếu dữ liệu nghiệp vụ, cần xác nhận thao tác phá hủy/khó hoàn tác, cần xác thực bên ngoài hoặc chưa có agent nào trong repo có quyền phù hợp.
-- Agent chạy command nhưng không có `edit` không được tự sửa file bằng CLI; khi cần thay đổi nội dung, handoff sang `docs-agent`, `refactor-agent`, `test-agent` hoặc `agent-authoring` theo đúng phạm vi.
-- Khi cần kiểm tra UI trong browser, đọc trang, tương tác, chụp screenshot hoặc chạy Playwright automation, handoff sang `browser-agent` để dùng VS Code Browser tools.
-- Agent không được tuyên bố sẽ nạp skill, dùng tool hoặc dùng đường dẫn tài nguyên nếu skill/tool đó chưa có trong context hiện tại hoặc chưa được kích hoạt rõ ràng.
-
-## Quy ước chống loop vô hạn
-
-- Mỗi vòng lặp kiểu `review -> fix -> validate` cho cùng một mục tiêu chỉ tối đa 2 chu kỳ; quá ngưỡng phải dừng với `needs-info`, `needs-fix` hoặc `blocked`.
-- Mỗi agent cần theo dõi signature lỗi/finding ngắn để phát hiện lặp. Signature tối thiểu gồm: phạm vi (`file` hoặc `command`) + loại lỗi + thông điệp chính.
-- Không giao lại đúng cùng tác vụ cho cùng agent khi không có delta trong `Scope`, `Context`, `Constraints` hoặc bằng chứng runtime/test mới.
-- Khi dừng do loop, output phải nêu rõ signature bị lặp, các lần đã thử và thông tin còn thiếu để mở vòng xử lý mới.
-- Ưu tiên chạy lệnh hẹp nhất để validate sau sửa; tránh full pipeline lặp lại khi chưa có thay đổi liên quan.
+- Workflow đi qua các phase: `DISCOVER -> PLAN -> ANALYZE -> CHANGE -> VALIDATE -> FINALIZE`.
+- Tối đa 4 worker cho một task, tối đa 3 worker song song.
+- Tối đa 2 vòng `change -> validate` cho cùng một lỗi.
+- Worker trả đề xuất handoff qua `Next`; orchestrator quyết định bước tiếp theo.
+- Không kết luận `done` khi thay đổi chưa được validate hoặc còn finding high/critical chưa xử lý.
 
 ## Agent I/O contract
 
-Khi orchestrator giao việc hoặc agent trả kết quả, ưu tiên contract ngắn này cho tác vụ đủ phức tạp. Với tác vụ nhỏ có thể rút gọn.
-
 Input handoff:
 
-- `Objective`: mục tiêu cần xử lý.
-- `Scope`: file, module hoặc phạm vi liên quan.
-- `Constraints`: quyền được dùng, điều không được làm, giới hạn thời gian hoặc token.
-- `Context`: tín hiệu quan trọng đã biết; không gửi lại toàn bộ nội dung đã đọc nếu không cần.
-- `Expected output`: dạng kết quả mong muốn.
+- `Objective`
+- `Scope`
+- `Constraints`
+- `Context`
+- `Expected output`
 
-Output handoff:
+Output:
 
-- `Status`: `done`, `needs-info`, `needs-fix` hoặc `blocked`.
-- `Findings`: tối đa 5 mục chính nếu là review, research hoặc audit.
-- `Actions`: việc đã làm hoặc đề xuất làm tiếp.
-- `Validation`: lệnh đã chạy, kết quả chính hoặc lý do chưa chạy.
-- `Next`: bước tiếp theo ngắn gọn.
+- `Status`
+- `Summary`
+- `Scope`
+- `Findings`
+- `Changes`
+- `Validation`
+- `Next`
 
-## Quy ước thao tác
+Finding signature chuẩn:
 
-- Đọc file: dùng `search` trước để khoanh vùng file/symbol/đoạn liên quan, rồi mới `read` phần cần thiết.
-- Khi đọc file/log tiếng Việt bằng PowerShell hoặc CLI, chỉ định UTF-8 nếu tool hỗ trợ, ví dụ `Get-Content -Encoding UTF8`. Không kết luận file bị mojibake chỉ từ output terminal chưa đọc đúng encoding.
-- Sửa file có sẵn: dùng `edit` với diff/patch nhỏ, rõ và dễ review.
-- Tạo file mới: sinh nội dung đầy đủ rồi ghi bằng `edit`; chỉ dùng template như nguồn tham khảo, không dùng script ghi file nếu nội dung có tiếng Việt hoặc văn bản cần giữ nguyên encoding.
-- Không dùng `execute`/shell để tạo hoặc sửa file nội dung, bao gồm redirect, heredoc, `Set-Content`, `Out-File`, `sed -i`, `perl -pi` hoặc script ghi file một lần; ngoại lệ chỉ dành cho công cụ sinh file/format/codemod có chủ đích, có thể kiểm chứng và nằm đúng phạm vi.
-- Với lỗi mojibake hoặc encoding tiếng Việt, chỉ sửa các dòng/đoạn có dấu hiệu hỏng bằng `edit`; không decode/encode lại toàn file khi file có cả đoạn đang hiển thị đúng. Nếu không chắc nội dung gốc, trả `needs-info` thay vì đoán.
-- Refactor hàng loạt: chỉ dùng script/codemod qua `execute` khi thay đổi cơ học, có thể kiểm chứng và tiết kiệm hơn chỉnh tay.
-- Log dài: ưu tiên ghi ra file log rồi đọc đúng đoạn lỗi chính thay vì truyền toàn bộ stdout/stderr qua nhiều agent.
-- Handoff giữa agents: chỉ truyền mục tiêu, phạm vi, constraint, tín hiệu chính và output mong muốn.
-- Không tách thêm agent nếu workflow có thể xử lý bằng mode, constraint hoặc agent hiện có.
+```text
+category:file:symbol:normalized-root-cause
+```
 
-## Quy ước chạy subagent song song
+## Phát triển và kiểm tra repo
 
-- Chỉ chạy song song khi các phần việc độc lập, phạm vi file/module không giao nhau và không cùng sửa một tài nguyên.
-- Phù hợp để song song: `security-agent`, `dependency-agent`, `performance-agent`, `review-agent`, `research-agent` khi mỗi agent chỉ đọc/đo một góc khác nhau.
-- Không chạy song song: nhiều agent cùng sửa code, cùng sửa test, cùng đụng `package.json`/lockfile, hoặc workflow cần kết quả bước trước mới biết bước sau.
-- Với task có sửa file, ưu tiên tuần tự: đo/review song song nếu được -> tổng hợp -> giao đúng một agent sửa -> chạy validate hẹp nhất.
-- Khi handoff song song, truyền context tối thiểu theo contract `Objective`, `Scope`, `Constraints`, `Context`, `Expected output` để giảm nhiễu và tránh lặp việc.
+Chạy toàn bộ unit test:
 
-## Cập nhật repo này
+```bash
+python -m unittest discover -s tests -v
+```
 
-1. Sửa hoặc thêm file `.agent.md` trong `agents/`.
-2. Giữ `name` ổn định, `description` rõ ràng và `tools` tối thiểu.
-3. Nếu thêm worker mới cho orchestrator, cập nhật `agents` trong `agents/orchestrator.agent.md`.
-4. Cập nhật README khi thêm/xóa/đổi vai trò, tools, model hoặc `user-invocable`.
-5. Kiểm tra frontmatter, tên tool và cấu trúc file trước khi commit.
+Validate toàn bộ agent:
+
+```bash
+python scripts/validate_agents.py
+```
+
+CI kiểm tra:
+
+- frontmatter bắt buộc;
+- agent name trùng;
+- reference không tồn tại hoặc self-reference;
+- quyền `agent`, `edit`, `execute` không hợp lệ;
+- worker bật `user-invocable` sai;
+- installer không ghi đè file ngoài quản lý;
+- uninstall không xóa file đã chỉnh sửa.
+
+## Cấu trúc repo
+
+```text
+.
+├── agents/                    # Agent source
+├── install.py                 # Installer/update/status/uninstall
+├── scripts/validate_agents.py # Validator cấu hình agent
+├── tests/                     # Unit tests
+├── .github/workflows/         # CI
+└── .vscode/                   # Cấu hình phát triển repo
+```
