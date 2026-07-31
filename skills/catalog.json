@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "skills": [
+    {
+      "name": "repository-discovery",
+      "type": "workflow",
+      "activation": "auto",
+      "compositionGroup": "supporting-workflow"
+    },
+    {
+      "name": "code-review",
+      "type": "workflow",
+      "activation": "auto-and-user",
+      "compositionGroup": "primary-workflow"
+    },
+    {
+      "name": "implementation-workflow",
+      "type": "workflow",
+      "activation": "auto-and-user",
+      "compositionGroup": "primary-workflow"
+    },
+    {
+      "name": "verification-before-completion",
+      "type": "workflow",
+      "activation": "auto",
+      "compositionGroup": "supporting-workflow"
+    },
+    {
+      "name": "java",
+      "type": "language",
+      "activation": "auto",
+      "compositionGroup": "language"
+    },
+    {
+      "name": "spring-boot",
+      "type": "framework",
+      "activation": "auto",
+      "compositionGroup": "framework"
+    }
+  ]
+}
