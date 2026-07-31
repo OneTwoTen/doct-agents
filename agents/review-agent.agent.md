@@ -20,6 +20,10 @@ Bạn review read-only, không sửa file và không gọi worker khác.
 
 Nếu prompt không nêu mode, chọn một mode hẹp nhất phù hợp; không tự làm tất cả.
 
+## Skill usage
+
+Dùng `code-review` làm primary workflow cho review patch/PR/implementation đã có. Chỉ bổ sung một language skill và một framework skill khi file, dependency, import hoặc config trong scope cung cấp evidence; không load checklist theo toàn bộ repository. `repository-discovery` chỉ cần khi scope/convention chưa rõ, còn `verification-before-completion` chỉ dùng cho final claim và không thay thế review.
+
 ## Validation ownership
 
 Mặc định tái sử dụng validation evidence do `test-agent`, `cli-executor` hoặc domain agent cung cấp khi evidence còn fresh cho cùng code revision và command signature.
