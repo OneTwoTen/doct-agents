@@ -15,10 +15,24 @@ USER_INVOCABLE_ALLOWLIST = {"orchestrator", "cli-executor"}
 EDIT_EXECUTE_ALLOWLIST = {"test-agent"}
 SUBAGENT_ROUTER_ALLOWLIST = {"orchestrator"}
 COMMON_WORKER_STATUSES = {"completed", "needs-info", "blocked", "failed"}
+COMMON_WORKER_OUTCOMES = {
+    "passed",
+    "change-made",
+    "defect-found",
+    "validation-failed",
+    "no-change",
+}
 ALLOWED_DOMAIN_STATUS_GROUPS = {
     frozenset({"required", "not-required", "uncertain"}),
 }
+PROMPT_BODY_BUDGETS = {
+    "orchestrator": 12_000,
+    "browser-agent": 9_000,
+}
+DEFAULT_PROMPT_BODY_BUDGET = 7_000
+FRONTMATTER_PATTERN = re.compile(r"\A---\s*\n(.*?)\n---(?:\s*\n|\Z)", re.DOTALL)
 STATUS_LINE_PATTERN = re.compile(r"^\s*-\s*`?Status`?\s*:\s*(.+)$", re.MULTILINE)
+OUTCOME_LINE_PATTERN = re.compile(r"^\s*-\s*`?Outcome`?\s*:\s*(.+)$", re.MULTILINE)
 BACKTICK_VALUE_PATTERN = re.compile(r"`([^`]+)`")
 
 
@@ -45,11 +59,16 @@ def parse_scalar(value: str):
     return value
 
 
-def parse_frontmatter(path: Path) -> dict[str, object]:
-    text = path.read_text(encoding="utf-8")
-    match = re.match(r"\A---\s*\n(.*?)\n---(?:\s*\n|\Z)", text, re.DOTALL)
+def frontmatter_match(text: str) -> re.Match[str]:
+    match = FRONTMATTER_PATTERN.match(text)
     if not match:
         raise ValueError("missing YAML frontmatter")
+    return match
+
+
+def parse_frontmatter(path: Path) -> dict[str, object]:
+    text = path.read_text(encoding="utf-8")
+    match = frontmatter_match(text)
 
     data: dict[str, object] = {}
     for line_number, raw_line in enumerate(match.group(1).splitlines(), start=2):
@@ -66,9 +85,14 @@ def parse_frontmatter(path: Path) -> dict[str, object]:
     return data
 
 
-def declared_status_groups(text: str) -> list[set[str]]:
+def prompt_body(text: str) -> str:
+    match = frontmatter_match(text)
+    return text[match.end() :].lstrip("\n")
+
+
+def declared_value_groups(text: str, pattern: re.Pattern[str]) -> list[set[str]]:
     groups: list[set[str]] = []
-    for match in STATUS_LINE_PATTERN.finditer(text):
+    for match in pattern.finditer(text):
         values: set[str] = set()
         for quoted in BACKTICK_VALUE_PATTERN.findall(match.group(1)):
             for value in quoted.split("|"):
@@ -78,6 +102,14 @@ def declared_status_groups(text: str) -> list[set[str]]:
         if values:
             groups.append(values)
     return groups
+
+
+def declared_status_groups(text: str) -> list[set[str]]:
+    return declared_value_groups(text, STATUS_LINE_PATTERN)
+
+
+def declared_outcome_groups(text: str) -> list[set[str]]:
+    return declared_value_groups(text, OUTCOME_LINE_PATTERN)
 
 
 def load_agents(directory: Path) -> tuple[list[Agent], list[str]]:
@@ -159,6 +191,24 @@ def validate(directory: Path) -> list[str]:
                     f"{agent.path}: unsupported status value '{status}'; "
                     f"worker statuses are {', '.join(sorted(COMMON_WORKER_STATUSES))}"
                 )
+
+        outcome_groups = declared_outcome_groups(text)
+        if not outcome_groups:
+            errors.append(f"{agent.path}: missing Outcome contract")
+        for declared in outcome_groups:
+            for outcome in sorted(declared - COMMON_WORKER_OUTCOMES):
+                errors.append(
+                    f"{agent.path}: unsupported outcome value '{outcome}'; "
+                    f"worker outcomes are {', '.join(sorted(COMMON_WORKER_OUTCOMES))}"
+                )
+
+        body_length = len(prompt_body(text))
+        body_budget = PROMPT_BODY_BUDGETS.get(agent.name, DEFAULT_PROMPT_BODY_BUDGET)
+        if body_length > body_budget:
+            errors.append(
+                f"{agent.path}: prompt body exceeds budget "
+                f"({body_length} > {body_budget} characters)"
+            )
 
     return sorted(errors)
 
