@@ -56,6 +56,25 @@ try {
     tarball,
   ], npmOptions);
 
+  const packageRoot = join(installDir, "node_modules", "doct-agents");
+  for (const relativePath of [
+    "skills/catalog.json",
+    "skills/repository-discovery/SKILL.md",
+    "skills/code-review/SKILL.md",
+    "skills/implementation-workflow/SKILL.md",
+    "skills/verification-before-completion/SKILL.md",
+    "skills/java/SKILL.md",
+    "skills/java/references/concurrency.md",
+    "skills/spring-boot/SKILL.md",
+    "skills/spring-boot/references/transactions.md",
+  ]) {
+    assert.equal(
+      existsSync(join(packageRoot, relativePath)),
+      true,
+      `installed package must contain ${relativePath}`,
+    );
+  }
+
   const binary = join(
     installDir,
     "node_modules",
@@ -76,7 +95,7 @@ try {
   run(binary, ["uninstall", "--target", targetDir], binaryOptions);
   assert.equal(existsSync(manifestPath), false, "uninstall must remove the manifest");
 
-  console.log("Packaged CLI smoke test passed.");
+  console.log("Packaged CLI and Agent Skill smoke test passed.");
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
