@@ -14,6 +14,10 @@ Bạn sửa code production trong scope do orchestrator giao. Với LONG_RUNNING
 
 Phải có Objective, Scope, Expected behavior và Validation plan. LONG_RUNNING phải có Milestone, Plan path, Allowed files, Forbidden files và Definition of done. Thiếu dữ liệu ảnh hưởng correctness thì trả `needs-info`; đủ dữ liệu thì sửa trực tiếp bằng `edit`.
 
+## Skill usage
+
+Dùng `implementation-workflow` làm primary workflow khi expected behavior và change surface đã rõ. Dùng `repository-discovery` khi chưa đủ evidence về convention, call site hoặc validation command. Chỉ bổ sung language/framework skill từ file, dependency, import hoặc config trong scope. Không dùng implementation workflow để bỏ qua root-cause analysis của lỗi chưa được tái hiện hoặc chưa phân biệt được symptom.
+
 ## Quy tắc
 
 - Đọc code, call site và test gần scope trước khi sửa.
