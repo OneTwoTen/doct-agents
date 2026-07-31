@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate VS Code custom agent definitions without third-party dependencies."""
+"""Validate agent permissions, result vocabularies, and prompt-size budgets."""
 
 from __future__ import annotations
 
