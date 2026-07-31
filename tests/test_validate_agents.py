@@ -14,6 +14,8 @@ assert SPEC.loader is not None
 sys.modules[SPEC.name] = validate_agents
 SPEC.loader.exec_module(validate_agents)
 
+COMMON_OUTCOME = "- `Outcome`: `passed | change-made | defect-found | validation-failed | no-change`."
+
 
 def agent_text(
     name: str,
@@ -22,7 +24,14 @@ def agent_text(
     agents: Optional[list[str]] = None,
     user_invocable: bool = False,
     body: str = "",
+    include_outcome: bool = True,
 ) -> str:
+    body_parts = []
+    if include_outcome:
+        body_parts.append(COMMON_OUTCOME)
+    if body:
+        body_parts.append(body)
+
     return "\n".join(
         [
             "---",
@@ -35,7 +44,7 @@ def agent_text(
             "",
             f"# {name}",
             "",
-            body,
+            "\n".join(body_parts),
         ]
     )
 
@@ -212,6 +221,53 @@ class ValidateAgentsTest(unittest.TestCase):
 
         self.assertEqual([], errors)
 
+    def test_accepts_common_declared_outcome_values(self) -> None:
+        errors = self.validate_files(
+            {"worker.agent.md": agent_text("worker", tools=["read"])}
+        )
+
+        self.assertEqual([], errors)
+
+    def test_rejects_unknown_declared_outcome_value(self) -> None:
+        errors = self.validate_files(
+            {
+                "worker.agent.md": agent_text(
+                    "worker",
+                    tools=["read"],
+                    body="- `Outcome`: `passed | retry-later`.",
+                    include_outcome=False,
+                )
+            }
+        )
+
+        self.assertTrue(
+            any("unsupported outcome value 'retry-later'" in error for error in errors)
+        )
+
+    def test_requires_declared_outcome(self) -> None:
+        errors = self.validate_files(
+            {
+                "worker.agent.md": agent_text(
+                    "worker", tools=["read"], include_outcome=False
+                )
+            }
+        )
+
+        self.assertTrue(any("missing Outcome contract" in error for error in errors))
+
+    def test_rejects_prompt_body_above_agent_budget(self) -> None:
+        errors = self.validate_files(
+            {
+                "worker.agent.md": agent_text(
+                    "worker",
+                    tools=["read"],
+                    body="x" * 7100,
+                )
+            }
+        )
+
+        self.assertTrue(any("prompt body exceeds budget" in error for error in errors))
+
     def test_repository_has_production_implementation_route(self) -> None:
         repository_root = Path(__file__).resolve().parents[1]
         agents_directory = repository_root / "agents"
@@ -272,6 +328,41 @@ class ValidateAgentsTest(unittest.TestCase):
         self.assertIn("Docs impact candidates", implementation_text)
         self.assertIn("`milestone`", review_text)
         self.assertIn("`final`", review_text)
+
+    def test_repository_defines_compact_handoff_and_validation_ownership(self) -> None:
+        repository_root = Path(__file__).resolve().parents[1]
+        agents_directory = repository_root / "agents"
+
+        orchestrator_text = (agents_directory / "orchestrator.agent.md").read_text(
+            encoding="utf-8"
+        )
+        review_text = (agents_directory / "review-agent.agent.md").read_text(
+            encoding="utf-8"
+        )
+        test_text = (agents_directory / "test-agent.agent.md").read_text(
+            encoding="utf-8"
+        )
+        cli_text = (agents_directory / "cli-executor.agent.md").read_text(
+            encoding="utf-8"
+        )
+        implementation_text = (
+            agents_directory / "implementation-agent.agent.md"
+        ).read_text(encoding="utf-8")
+        dependency_text = (agents_directory / "dependency-agent.agent.md").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("fresh validation evidence", orchestrator_text)
+        self.assertIn("tối đa 10 bullet", orchestrator_text)
+        self.assertIn("không copy nguyên worker result", orchestrator_text)
+        self.assertIn("Summary tối đa 120 từ", orchestrator_text)
+        self.assertIn("tái sử dụng validation evidence", review_text)
+        self.assertIn("Validation owner: review-agent", review_text)
+        self.assertIn("test mà agent vừa thêm hoặc sửa", test_text)
+        self.assertIn("validation cuối", cli_text)
+        self.assertIn("regenerate lockfile", cli_text)
+        self.assertIn("manifest nằm trong `Allowed files`", implementation_text)
+        self.assertIn("không sửa manifest hoặc lockfile", dependency_text)
 
 
 if __name__ == "__main__":
