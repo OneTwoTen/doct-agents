@@ -5,6 +5,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Optional
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "validate_skills.py"
 SPEC = importlib.util.spec_from_file_location("validate_skills", MODULE_PATH)
@@ -33,7 +34,7 @@ class ValidateSkillsTest(unittest.TestCase):
         self,
         name: str,
         *,
-        description: str | None = None,
+        description: Optional[str] = None,
         user_invocable: bool = False,
         disable_model_invocation: bool = False,
         body: str = "# Workflow\n\nFollow the evidence.\n",
