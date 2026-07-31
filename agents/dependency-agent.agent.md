@@ -20,7 +20,7 @@ Bạn audit dependency theo chế độ read-only đối với repository.
 
 ## Boundary
 
-- Không sửa manifest hoặc lockfile, không install/update package.
+- không sửa manifest hoặc lockfile, không install/update package.
 - Không tự chọn remediation vượt package hoặc version range được yêu cầu.
 - Khi cần sửa manifest, đề xuất `implementation-agent` với exact package/version và file scope.
 - Khi cần regenerate lockfile sau manifest change, đề xuất `cli-executor` với command, cwd và expected lockfile.
