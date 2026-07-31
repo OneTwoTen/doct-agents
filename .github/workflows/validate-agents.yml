@@ -1,9 +1,10 @@
-name: Validate agents
+name: Validate agents and skills
 
 on:
   pull_request:
     paths:
       - "agents/**"
+      - "skills/**"
       - "bin/**"
       - "package.json"
       - "install.py"
@@ -15,6 +16,7 @@ on:
     branches: [main]
     paths:
       - "agents/**"
+      - "skills/**"
       - "bin/**"
       - "package.json"
       - "install.py"
