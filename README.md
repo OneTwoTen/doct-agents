@@ -232,14 +232,33 @@ Một plan có tối đa 6 milestone. Scope lớn hơn phải chia thành các p
 
 Các worker không gọi trực tiếp nhau. Orchestrator làm trung gian để tránh vòng lặp và sửa chồng file:
 
-1. `independent-analysis`: tối đa 3 agent phân tích độc lập.
-2. `challenge`: tối đa 2 agent phản biện proposal và assumption.
+1. `independent-analysis`: mặc định tối đa 2 agent; chỉ gọi agent thứ ba khi có domain risk rõ như security, dependency hoặc performance.
+2. `challenge`: tối đa 2 agent và chỉ chạy khi proposal có mâu thuẫn, migration/rollback hoặc assumption rủi ro.
 3. `synthesis`: `planning-agent` tổng hợp requirements, proposal, challenge và decisions thành roadmap.
 
 `architecture-agent` hỗ trợ hai mode:
 
 - `proposal`: đề xuất tối đa 3 options và trade-off.
 - `challenge`: tìm coupling, failure mode, migration/rollback risk và validation gap.
+
+### Kết quả worker và validation ownership
+
+`Status` biểu diễn trạng thái thực thi của worker: `completed`, `needs-info`, `blocked` hoặc `failed`. `Outcome` biểu diễn ý nghĩa của kết quả: `passed`, `change-made`, `defect-found`, `validation-failed` hoặc `no-change`. Vì vậy `Status: completed` không tự động có nghĩa toàn bộ task đã thành công.
+
+Mỗi command có một owner mặc định cho cùng code revision:
+
+| Owner | Phạm vi validation |
+| --- | --- |
+| `test-agent` | Test hẹp mà chính agent vừa thêm hoặc sửa |
+| `review-agent` | Tái sử dụng evidence; chỉ chạy command hẹp khi finding quan trọng còn thiếu evidence |
+| `cli-executor` | Build, lint, typecheck, integration test và validation cuối |
+| `dependency-agent` | Audit, outdated và dependency tree |
+| `performance-agent` | Benchmark và profiling |
+| `browser-agent` | Browser runtime và user flow |
+
+Orchestrator chuẩn hóa command signature và không chạy lại command đã có fresh successful evidence cho cùng code revision. Handoff context giới hạn tối đa 10 bullet, ưu tiên file/symbol/evidence reference và không copy nguyên worker result hoặc toàn bộ lịch sử. Summary mặc định tối đa 120 từ; finding/change/domain fields chỉ xuất hiện khi có dữ liệu.
+
+Validator kiểm tra Outcome vocabulary và prompt-size budget để ngăn agent prompt phình không kiểm soát. Budget hiện tại là 12.000 ký tự cho orchestrator, 9.000 cho browser-agent và 7.000 cho các worker còn lại.
 
 ### Chế độ tự động cao
 
@@ -384,7 +403,7 @@ npm run smoke:package
 RELEASE_TAG=v0.2.1 npm run release:check
 ```
 
-CI chạy ba lane: Node 18/Python 3.9 trên Ubuntu, runtime hiện tại trên Ubuntu và runtime hiện tại trên Windows.
+Validator còn kiểm tra quyền subagent, `edit + execute`, Status/Outcome vocabulary và prompt-size budget. CI chạy ba lane: Node 18/Python 3.9 trên Ubuntu, runtime hiện tại trên Ubuntu và runtime hiện tại trên Windows.
 
 ## Publish lên npm
 
