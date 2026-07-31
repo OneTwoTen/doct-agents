@@ -14,6 +14,12 @@ REQUIRED_FIELDS = {"name", "description", "tools", "agents", "user-invocable"}
 USER_INVOCABLE_ALLOWLIST = {"orchestrator", "cli-executor"}
 EDIT_EXECUTE_ALLOWLIST = {"test-agent"}
 SUBAGENT_ROUTER_ALLOWLIST = {"orchestrator"}
+COMMON_WORKER_STATUSES = {"completed", "needs-info", "blocked", "failed"}
+ALLOWED_DOMAIN_STATUS_GROUPS = {
+    frozenset({"required", "not-required", "uncertain"}),
+}
+STATUS_LINE_PATTERN = re.compile(r"^\s*-\s*`?Status`?\s*:\s*(.+)$", re.MULTILINE)
+BACKTICK_VALUE_PATTERN = re.compile(r"`([^`]+)`")
 
 
 @dataclass(frozen=True)
@@ -58,6 +64,20 @@ def parse_frontmatter(path: Path) -> dict[str, object]:
             raise ValueError(f"line {line_number}: duplicate field {key}")
         data[key] = parse_scalar(value)
     return data
+
+
+def declared_status_groups(text: str) -> list[set[str]]:
+    groups: list[set[str]] = []
+    for match in STATUS_LINE_PATTERN.finditer(text):
+        values: set[str] = set()
+        for quoted in BACKTICK_VALUE_PATTERN.findall(match.group(1)):
+            for value in quoted.split("|"):
+                normalized = value.strip().strip(".,").lower()
+                if normalized:
+                    values.add(normalized)
+        if values:
+            groups.append(values)
+    return groups
 
 
 def load_agents(directory: Path) -> tuple[list[Agent], list[str]]:
@@ -129,6 +149,16 @@ def validate(directory: Path) -> list[str]:
             errors.append(f"{agent.path}: duplicate tool entry")
         if len(agent.agents) != len(set(agent.agents)):
             errors.append(f"{agent.path}: duplicate agent reference")
+
+        text = agent.path.read_text(encoding="utf-8")
+        for declared in declared_status_groups(text):
+            if frozenset(declared) in ALLOWED_DOMAIN_STATUS_GROUPS:
+                continue
+            for status in sorted(declared - COMMON_WORKER_STATUSES):
+                errors.append(
+                    f"{agent.path}: unsupported status value '{status}'; "
+                    f"worker statuses are {', '.join(sorted(COMMON_WORKER_STATUSES))}"
+                )
 
     return sorted(errors)
 

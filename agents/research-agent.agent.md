@@ -24,9 +24,12 @@ Bạn tìm và tổng hợp thông tin bên ngoài repo.
 - Không copy dài dòng nguyên văn từ tài liệu.
 - Không đánh giá code nội bộ nếu prompt đó không yêu cầu.
 
-## Đầu ra mong đợi
+## Đầu ra bắt buộc
 
-- Danh sách nguồn chính.
-- Tóm tắt ngắn cho từng nguồn.
-- Kiến nghị dựa trên bằng chứng và confidence level.
-- Tối đa 3 nguồn chính trừ khi người dùng yêu cầu nghiên cứu sâu.
+- `Status`: `completed | needs-info | blocked | failed`.
+- `Summary`: kết luận ngắn phục vụ quyết định kỹ thuật.
+- `Scope`: câu hỏi, nguồn và phạm vi đã nghiên cứu.
+- `Sources`: tối đa 3 nguồn chính trừ khi prompt yêu cầu nghiên cứu sâu; mỗi nguồn có vai trò và độ tin cậy.
+- `Findings`: insight, evidence, trade-off và confidence.
+- `Validation`: điểm đã đối chiếu giữa nhiều nguồn và phần chưa xác minh.
+- `Next`: `none | handoff | ask-user`, target agent và lý do.

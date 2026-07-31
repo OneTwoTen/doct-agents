@@ -86,13 +86,23 @@ Cập nhật workspace hiện tại:
 npx doct-agents@latest update --scope workspace
 ```
 
-Installer lưu checksum trong `.doct-agents-manifest.json`. Nếu một agent đã được chỉnh sửa cục bộ, update sẽ dừng để tránh mất dữ liệu.
+Installer lưu checksum trong `.doct-agents-manifest.json`. Nếu một agent hiện tại đã được chỉnh sửa cục bộ, update sẽ dừng để tránh mất dữ liệu.
 
-Chỉ dùng `--force` khi thật sự muốn thay thế chỉnh sửa cục bộ:
+Khi phiên bản mới xóa hoặc đổi tên một agent:
+
+- file obsolete còn đúng checksum đã cài sẽ được xóa tự động;
+- file obsolete đã chỉnh sửa cục bộ được giữ lại và tiếp tục xuất hiện là `Modified` trong `status`;
+- file unmanaged không bao giờ bị xóa.
+
+Chỉ dùng `--force` khi thật sự muốn thay thế chỉnh sửa cục bộ của agent vẫn còn trong package:
 
 ```bash
 npx doct-agents@latest update --scope user --force
 ```
+
+`--force` không bỏ qua kiểm tra an toàn đường dẫn. Manifest có path không hợp lệ, target hoặc một thư mục cha là symbolic link/junction, manifest là symbolic link hoặc agent được quản lý là symbolic link đều làm installer dừng trước khi copy/xóa file.
+
+Update stage toàn bộ agent mới và manifest trước khi thay đổi target. Khi commit gặp lỗi, installer rollback các file đã thay thế; nếu rollback cũng lỗi, thư mục backup được giữ lại và đường dẫn được báo trong error.
 
 Sau khi update agent, chạy `Developer: Reload Window` và mở chat mới để VS Code nạp lại frontmatter, tool và subagent routing.
 
@@ -357,36 +367,36 @@ python third_party/doct-agents/install.py install --scope workspace \
 
 ## Phát triển và kiểm tra
 
-Node CLI:
-
-```bash
-npm test
-npm pack --dry-run
-```
-
-Python installer và validator:
-
-```bash
-python -m unittest discover -s tests -v
-python scripts/validate_agents.py
-```
-
-Chạy toàn bộ:
+Chạy toàn bộ test Node, test Python, validator, package dry-run và smoke test từ tarball thực tế:
 
 ```bash
 npm run check
 ```
 
+Các lệnh hẹp hơn:
+
+```bash
+npm test
+npm run test:python
+npm run validate
+npm run pack:check
+npm run smoke:package
+RELEASE_TAG=v0.2.1 npm run release:check
+```
+
+CI chạy ba lane: Node 18/Python 3.9 trên Ubuntu, runtime hiện tại trên Ubuntu và runtime hiện tại trên Windows.
+
 ## Publish lên npm
 
-Package dùng tên `doct-agents` và executable cùng tên. Workflow `.github/workflows/publish-npm.yml` publish khi tạo GitHub Release hoặc chạy thủ công.
+Package dùng tên `doct-agents` và executable cùng tên. Workflow `.github/workflows/publish-npm.yml` publish khi tạo GitHub Release hoặc chạy thủ công với input tag bắt buộc.
 
 Quy trình release:
 
 1. Tăng `version` trong `package.json`.
 2. Merge thay đổi vào `main`.
-3. Tạo GitHub Release cùng version, ví dụ `v0.2.0`.
-4. Workflow chạy test, `npm pack --dry-run`, sau đó `npm publish`.
+3. Tạo GitHub Release cùng version, ví dụ `v0.2.1`; hoặc chạy workflow thủ công và nhập đúng tag đã tồn tại.
+4. Workflow checkout chính tag đó và chạy `npm run check`.
+5. Workflow xác nhận tag đúng bằng `v${package.json.version}` rồi mới chạy `npm publish`.
 
 Nếu workflow vẫn dùng token cho publish, repository cần secret `NPM_TOKEN`. Sau khi Trusted Publishing được cấu hình, có thể dùng OIDC thay token dài hạn.
 
@@ -394,13 +404,16 @@ Nếu workflow vẫn dùng token cho publish, repository cần secret `NPM_TOKEN
 
 ```text
 .
-├── agents/                    # Agent source và nội dung npm package
-├── bin/doct-agents.js         # CLI cho npx, bunx và pnpm dlx
-├── docs/superpowers/          # Design specs và implementation plans
-├── install.py                 # Installer Python fallback
-├── package.json               # npm package metadata và bin mapping
-├── scripts/validate_agents.py # Validator cấu hình agent
-├── tests/                     # Node và Python unit tests
-├── .github/workflows/         # Validate và publish npm
-└── .vscode/                   # Cấu hình phát triển repo
+├── agents/                       # Agent source và nội dung npm package
+├── bin/cli.js                    # npm executable cho npx, bunx và pnpm dlx
+├── bin/doct-agents.js            # CLI implementation và installer logic
+├── docs/superpowers/             # Design specs và implementation plans
+├── install.py                    # Installer Python fallback
+├── package.json                  # npm package metadata và bin mapping
+├── scripts/check_release.py      # Kiểm tra release tag và package version
+├── scripts/smoke_package.mjs     # Smoke test tarball và executable đã đóng gói
+├── scripts/validate_agents.py    # Validator cấu hình agent
+├── tests/                        # Node và Python unit tests
+├── .github/workflows/            # Validate và publish npm
+└── .vscode/                      # Cấu hình phát triển repo
 ```

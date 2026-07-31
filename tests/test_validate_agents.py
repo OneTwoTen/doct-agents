@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Optional
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "validate_agents.py"
 SPEC = importlib.util.spec_from_file_location("validate_agents", MODULE_PATH)
@@ -17,9 +18,10 @@ SPEC.loader.exec_module(validate_agents)
 def agent_text(
     name: str,
     *,
-    tools: list[str] | None = None,
-    agents: list[str] | None = None,
+    tools: Optional[list[str]] = None,
+    agents: Optional[list[str]] = None,
     user_invocable: bool = False,
+    body: str = "",
 ) -> str:
     return "\n".join(
         [
@@ -33,6 +35,7 @@ def agent_text(
             "",
             f"# {name}",
             "",
+            body,
         ]
     )
 
@@ -135,6 +138,80 @@ class ValidateAgentsTest(unittest.TestCase):
         )
         self.assertEqual([], errors)
 
+    def test_rejects_nonstandard_declared_status_values(self) -> None:
+        errors = self.validate_files(
+            {
+                "worker.agent.md": agent_text(
+                    "worker",
+                    tools=["read"],
+                    body="- `Status`: `done | needs-fix | blocked`.",
+                )
+            }
+        )
+
+        self.assertTrue(any("unsupported status value 'done'" in error for error in errors))
+        self.assertTrue(
+            any("unsupported status value 'needs-fix'" in error for error in errors)
+        )
+
+    def test_rejects_unknown_declared_status_value(self) -> None:
+        errors = self.validate_files(
+            {
+                "worker.agent.md": agent_text(
+                    "worker",
+                    tools=["read"],
+                    body="- `Status`: `completed | retry-later | failed`.",
+                )
+            }
+        )
+
+        self.assertTrue(
+            any("unsupported status value 'retry-later'" in error for error in errors)
+        )
+
+    def test_rejects_fully_unknown_declared_status_values(self) -> None:
+        errors = self.validate_files(
+            {
+                "worker.agent.md": agent_text(
+                    "worker",
+                    tools=["read"],
+                    body="- `Status`: `success | retry-later`.",
+                )
+            }
+        )
+
+        self.assertTrue(any("unsupported status value 'success'" in error for error in errors))
+        self.assertTrue(
+            any("unsupported status value 'retry-later'" in error for error in errors)
+        )
+
+    def test_accepts_common_declared_status_values(self) -> None:
+        errors = self.validate_files(
+            {
+                "worker.agent.md": agent_text(
+                    "worker",
+                    tools=["read"],
+                    body="- `Status`: `completed | needs-info | blocked | failed`.",
+                )
+            }
+        )
+
+        self.assertEqual([], errors)
+
+    def test_accepts_docs_impact_status_values(self) -> None:
+        errors = self.validate_files(
+            {
+                "orchestrator.agent.md": agent_text(
+                    "orchestrator",
+                    tools=["read"],
+                    user_invocable=True,
+                    body="- `Status`: `required | not-required | uncertain`.",
+                )
+            }
+        )
+
+        self.assertEqual([], errors)
+
     def test_repository_has_production_implementation_route(self) -> None:
         repository_root = Path(__file__).resolve().parents[1]
         agents_directory = repository_root / "agents"
@@ -145,7 +222,6 @@ class ValidateAgentsTest(unittest.TestCase):
             implementation_path.exists(),
             "production code changes need a dedicated implementation-agent",
         )
-
         implementation = validate_agents.parse_frontmatter(implementation_path)
         self.assertIn("edit", implementation["tools"])
         self.assertNotIn("agent", implementation["tools"])

@@ -7,9 +7,10 @@ on:
       - "bin/**"
       - "package.json"
       - "install.py"
-      - "scripts/validate_agents.py"
+      - "scripts/**"
       - "tests/**"
       - ".github/workflows/validate-agents.yml"
+      - ".github/workflows/publish-npm.yml"
   push:
     branches: [main]
     paths:
@@ -17,29 +18,46 @@ on:
       - "bin/**"
       - "package.json"
       - "install.py"
-      - "scripts/validate_agents.py"
+      - "scripts/**"
       - "tests/**"
       - ".github/workflows/validate-agents.yml"
+      - ".github/workflows/publish-npm.yml"
 
 permissions:
   contents: read
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    name: Validate (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ubuntu-minimum
+            os: ubuntu-latest
+            node: "18"
+            python: "3.9"
+          - name: ubuntu-current
+            os: ubuntu-latest
+            node: "24"
+            python: "3.13"
+          - name: windows-current
+            os: windows-latest
+            node: "24"
+            python: "3.13"
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ matrix.node }}
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - name: Run Node CLI tests
-        run: npm test
-      - name: Verify npm package contents
-        run: npm pack --dry-run
-      - name: Run Python installer and validator tests
-        run: python -m unittest discover -s tests -v
-      - name: Validate repository agents
-        run: python scripts/validate_agents.py
+          python-version: ${{ matrix.python }}
+      - name: Show runtime versions
+        run: |
+          node --version
+          npm --version
+          python --version
+      - name: Run complete repository check
+        run: npm run check

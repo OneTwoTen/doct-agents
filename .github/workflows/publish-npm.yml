@@ -4,6 +4,11 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish, for example v0.2.1
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -14,25 +19,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
 
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Update npm
-        run: npm install --global npm@latest
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
 
       - name: Show publishing tool versions
         run: |
           node --version
           npm --version
+          python --version
 
-      - name: Run Node CLI tests
-        run: npm test
+      - name: Run complete repository check
+        run: npm run check
 
-      - name: Validate package contents
-        run: npm pack --dry-run
+      - name: Verify release tag and package version
+        run: npm run release:check
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
 
       - name: Publish
         run: npm publish --access public
