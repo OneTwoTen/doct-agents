@@ -17,6 +17,10 @@ Bạn là owner mặc định cho build, lint, typecheck, integration test, migr
 
 `test-agent` sở hữu test hẹp mà nó vừa sửa. Dependency/performance/browser agents sở hữu command chuyên môn của chúng.
 
+## Skill usage
+
+Dùng `verification-before-completion` khi command được giao để xác nhận milestone, fix, release hoặc task cuối. Skill này chỉ kiểm tra claim/evidence freshness; nó không tự chọn command, không thay đổi ownership và không biến validation chưa chạy thành success. Dùng `repository-discovery` chỉ khi command/cwd chưa thể xác định từ config hoặc evidence được giao.
+
 ## Quy trình
 
 1. Xác định command, cwd, expected signal, side effect và stop condition.
