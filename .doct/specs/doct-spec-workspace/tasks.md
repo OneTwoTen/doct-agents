@@ -1,6 +1,6 @@
 # Doct Spec Workspace Implementation Tasks
 
-Status: implementing
+Status: completed
 
 ## Global constraints
 
@@ -13,14 +13,15 @@ Status: implementing
 
 Objective: thêm regression assertions cho `.doct/specs`, feature registry và LONG_RUNNING lifecycle mới.
 
-Allowed files: `tests/test_validate_agents.py`.
+Allowed files: `tests/test_spec_workspace_contract.py`.
 
 Acceptance criteria:
 - Test yêu cầu `planning-agent` chứa `.doct/specs/<feature>/` và bốn artifact names.
 - Test yêu cầu orchestrator chứa `REQUIREMENTS_REVIEW`, `DESIGN_REVIEW`, `SELECT_EXECUTOR`, `FEATURE_IMPACT`, `UPDATE_FEATURE_REGISTRY`.
-- Test yêu cầu feature catalog contract.
+- Test yêu cầu final reconciliation contract trước khi LONG_RUNNING được kết luận hoàn tất.
+- Test yêu cầu feature catalog contract và README dùng canonical `.doct/specs/...` path.
 
-Validation: `python -m unittest tests.test_validate_agents.ValidateAgentsTest.test_repository_supports_long_running_workflow -v`.
+Validation: `python -m unittest tests.test_spec_workspace_contract -v`.
 
 ## M2 — Refactor planning ownership
 
@@ -37,7 +38,7 @@ Validation: repository contract test + agent validator.
 
 ## M3 — Extend LONG_RUNNING orchestration
 
-Objective: orchestration dùng spec phases, executor selection và feature impact lifecycle.
+Objective: orchestration dùng spec phases, executor selection, feature impact và final reconciliation lifecycle.
 
 Allowed files: `agents/orchestrator.agent.md`, `agents/req-extractor.agent.md`.
 
@@ -45,6 +46,7 @@ Acceptance criteria:
 - State machine mới có review gates và executor selection.
 - Milestone handoff dùng Spec path/Task/Milestone thay vì plan path.
 - Feature impact candidates được checkpoint.
+- Trước FINALIZE phải reconcile requirements/design/tasks/progress/feature registry với implementation và validation evidence thực tế.
 
 Validation: repository contract test + agent validator.
 
@@ -63,25 +65,30 @@ Validation: repository contract test + agent validator.
 
 ## M5 — Bootstrap project knowledge and user docs
 
-Objective: tạo project summary + feature catalog và cập nhật README.
+Objective: tạo project architecture overview + feature catalog và cập nhật README.
 
 Allowed files: `.doct/project.md`, `.doct/features/index.md`, `.doct/features/long-running.md`, `README.md`.
 
 Acceptance criteria:
-- Agent mới có thể đọc `.doct/project.md` + index để biết capability hiện tại.
+- `.doct/project.md` mô tả purpose, architecture và knowledge model nhưng không duplicate danh sách current capabilities vốn thuộc `.doct/features/index.md`.
+- Agent mới đọc `.doct/project.md` + feature index để biết architecture và capability hiện tại.
 - LONG_RUNNING feature record mô tả implemented/not implemented/current spec model.
 - README mô tả cách resume bằng `.doct/specs/<feature>/progress.md`.
 
 Validation: link/path consistency review + package tests.
 
-## M6 — Final verification
+## M6 — Final verification and reconciliation
 
-Objective: verify toàn bộ regression suite và package/agent contracts.
+Objective: verify toàn bộ regression suite/package contracts và reconcile canonical spec state với implementation thực tế.
 
-Validation commands (đã có evidence trong repo):
-- `npm test`
-- `python -m unittest discover -s tests -v`
-- `python scripts/validate_agents.py`
-- `npm pack --dry-run`
+Validation commands:
+- `npm run check`
 
-Definition of done: tất cả command pass, không còn canonical LONG_RUNNING instruction trỏ sang `docs/superpowers/plans`, feature registry phản ánh behavior mới.
+Final reconciliation:
+- `requirements.md` phản ánh final intended behavior.
+- `design.md` phản ánh architecture decisions cuối.
+- `tasks.md` phản ánh roadmap/work thực tế và có `Status: completed` khi toàn bộ work hoàn tất.
+- `progress.md` phản ánh fresh validation evidence trên final revision.
+- `.doct/features/*` chỉ ghi stable/current capability dựa trên cùng fresh evidence.
+
+Definition of done: `npm run check` pass trên final revision, không còn canonical LONG_RUNNING instruction trỏ sang `docs/superpowers/plans`, spec artifacts không mâu thuẫn trạng thái và feature registry phản ánh behavior mới.
