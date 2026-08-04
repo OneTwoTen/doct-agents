@@ -1,10 +1,10 @@
 # LONG_RUNNING
 
-Status: stable
+Status: experimental
 
 ## Capability
 
-LONG_RUNNING điều phối yêu cầu nhiều phase/module bằng requirements review, architecture deliberation, executor-neutral planning, milestone execution, validation, documentation impact, checkpoint/resume và final feature synthesis.
+LONG_RUNNING điều phối yêu cầu nhiều phase/module bằng requirements review, architecture deliberation, executor-neutral planning, milestone execution, validation, documentation impact, checkpoint/resume, final feature synthesis và spec reconciliation.
 
 ## Implemented
 
@@ -18,6 +18,8 @@ LONG_RUNNING điều phối yêu cầu nhiều phase/module bằng requirements 
 - Milestone review/validation/docs-impact/checkpoint loop.
 - Resume từ `progress.md` mà không dispatch lại completed work.
 - Final `FEATURE_IMPACT` và feature registry update contract.
+- Final reconciliation giữa requirements/design/tasks/progress/feature registry và implementation thực tế.
+- Validation revision semantics: metadata-only evidence reconciliation không tự làm stale validation đã pass cho cùng code/test/config/criteria state.
 
 ## Not implemented
 
@@ -32,10 +34,11 @@ LONG_RUNNING điều phối yêu cầu nhiều phase/module bằng requirements 
 - Global fix/review budget thuộc orchestrator, không thuộc executor.
 - Documentation impact và feature impact là hai gate độc lập.
 - Feature registry chỉ phản ánh validated/current capability và không thay thế public docs.
+- `stable` chỉ được ghi sau successful final validation cho validation revision liên quan.
 
 ## Validation
 
-GitHub Actions run `30891155471` passed all configured lanes: Ubuntu current, Ubuntu minimum và Windows current. Mỗi lane hoàn thành repository `npm run check`, bao gồm test/validator/package checks theo package scripts hiện hành.
+Previous GitHub Actions run `30891444582` passed all configured lanes before the latest review fixes. Current validation revision candidate is `f1e6fd9641d1ad48e31e5a7ad6078b47247623a2`; fresh final CI evidence has not yet been recorded in the spec, therefore this capability remains `experimental`.
 
 ## Related specs
 
