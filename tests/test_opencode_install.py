@@ -50,21 +50,23 @@ class OpenCodeInstallerTest(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_opencode_targets_preserve_legacy_copilot_defaults(self) -> None:
+        home = Path("/home/dev")
+        workspace = Path("/repo")
         self.assertEqual(
-            Path("/home/dev/.copilot/agents"),
-            installer.default_target("user", Path("/repo"), platform="copilot", home=Path("/home/dev")),
+            installer.normalize_target(home / ".copilot" / "agents"),
+            installer.default_target("user", workspace, platform="copilot", home=home),
         )
         self.assertEqual(
-            Path("/repo/.github/agents"),
-            installer.default_target("workspace", Path("/repo"), platform="copilot", home=Path("/home/dev")),
+            installer.normalize_target(workspace) / ".github" / "agents",
+            installer.default_target("workspace", workspace, platform="copilot", home=home),
         )
         self.assertEqual(
-            Path("/home/dev/.config/opencode/agents"),
-            installer.default_target("user", Path("/repo"), platform="opencode", home=Path("/home/dev")),
+            installer.normalize_target(home / ".config" / "opencode" / "agents"),
+            installer.default_target("user", workspace, platform="opencode", home=home),
         )
         self.assertEqual(
-            Path("/repo/.opencode/agents"),
-            installer.default_target("workspace", Path("/repo"), platform="opencode", home=Path("/home/dev")),
+            installer.normalize_target(workspace) / ".opencode" / "agents",
+            installer.default_target("workspace", workspace, platform="opencode", home=home),
         )
 
     def test_renderer_maps_orchestrator_and_worker_permissions(self) -> None:
