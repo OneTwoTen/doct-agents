@@ -21,9 +21,9 @@ import {
   openCodeConfigPath,
   patchOpenCodeConfig,
   renderOpenCodeAgent,
-  run,
   uninstallAgents,
 } from "../bin/doct-agents.js";
+import { run } from "../bin/platform-runner.js";
 
 function sourceAgent({ name, description = name, tools = [], agents = [], userInvocable = false, body = "body\n" }) {
   return `---\nname: ${name}\ndescription: ${JSON.stringify(description)}\ntools: ${JSON.stringify(tools)}\nagents: ${JSON.stringify(agents)}\nuser-invocable: ${userInvocable}\n---\n\n${body}`;
