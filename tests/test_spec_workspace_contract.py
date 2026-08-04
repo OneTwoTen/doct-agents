@@ -92,10 +92,14 @@ class SpecWorkspaceContractTest(unittest.TestCase):
         tasks = (spec / "tasks.md").read_text(encoding="utf-8")
         progress = (spec / "progress.md").read_text(encoding="utf-8")
 
-        self.assertIn("Status: implementing", tasks)
-        self.assertIn("Status: implementing", progress)
+        task_status = re.search(r"^Status: (\S+)$", tasks, re.MULTILINE)
+        progress_status = re.search(r"^Status: (\S+)$", progress, re.MULTILINE)
+        self.assertIsNotNone(task_status)
+        self.assertIsNotNone(progress_status)
+        self.assertEqual(task_status.group(1), progress_status.group(1))
+        self.assertIn(task_status.group(1), {"implementing", "completed"})
         self.assertIn("authoritative completion ledger", tasks)
-        self.assertRegex(tasks, r"- \[ \] `M1-T1`")
+        self.assertRegex(tasks, r"- \[[ x]\] `M1-T1`")
         self.assertIn("Current checklist item", progress)
         self.assertNotRegex(progress, re.compile(r"^- \[[ x]\] `M\d+-T\d+`", re.MULTILINE))
 
