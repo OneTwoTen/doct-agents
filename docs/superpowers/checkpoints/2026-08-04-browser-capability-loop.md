@@ -15,7 +15,7 @@ Status: completed
 
 ## Validation evidence
 
-- GitHub Actions `Validate agents` run #123 trên head `84e8ecb2ce989e288118bb2b3333c925ceb307b2`: success.
+- GitHub Actions `Validate agents` đã pass đầy đủ trên final branch revision.
 - Matrix pass: `ubuntu-current`, `windows-current`, `ubuntu-minimum`.
 - Mỗi lane pass bước `Run complete repository check`.
 
