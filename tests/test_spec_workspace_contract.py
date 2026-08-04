@@ -37,7 +37,8 @@ class SpecWorkspaceContractTest(unittest.TestCase):
         self.assertIn("Feature impact candidates", text)
         self.assertIn("## Final reconciliation", text)
         self.assertIn("canonical spec còn drift", text)
-        self.assertIn("final revision", text)
+        self.assertIn("validation revision", text)
+        self.assertIn("Metadata-only reconciliation", text)
 
     def test_docs_agent_separates_public_docs_from_feature_registry(self) -> None:
         text = (AGENTS / "docs-agent.agent.md").read_text(encoding="utf-8")
