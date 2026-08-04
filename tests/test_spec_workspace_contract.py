@@ -21,7 +21,7 @@ class SpecWorkspaceContractTest(unittest.TestCase):
         self.assertIn("STATE", text)
         self.assertNotIn("docs/superpowers/plans/YYYY-MM-DD-<feature>-implementation.md", text)
 
-    def test_long_running_has_spec_review_executor_and_feature_lifecycle(self) -> None:
+    def test_long_running_has_spec_review_executor_feature_and_reconciliation_lifecycle(self) -> None:
         text = (AGENTS / "orchestrator.agent.md").read_text(encoding="utf-8")
 
         for stage in (
@@ -35,6 +35,9 @@ class SpecWorkspaceContractTest(unittest.TestCase):
         self.assertIn(".doct/specs/<feature>/", text)
         self.assertIn("progress.md", text)
         self.assertIn("Feature impact candidates", text)
+        self.assertIn("## Final reconciliation", text)
+        self.assertIn("canonical spec còn drift", text)
+        self.assertIn("final revision", text)
 
     def test_docs_agent_separates_public_docs_from_feature_registry(self) -> None:
         text = (AGENTS / "docs-agent.agent.md").read_text(encoding="utf-8")
@@ -54,6 +57,10 @@ class SpecWorkspaceContractTest(unittest.TestCase):
         self.assertTrue(index.exists())
         self.assertTrue(long_running.exists())
 
+        project_text = project.read_text(encoding="utf-8")
+        self.assertNotIn("## Current capabilities", project_text)
+        self.assertIn(".doct/features/index.md", project_text)
+
         index_text = index.read_text(encoding="utf-8")
         self.assertIn("LONG_RUNNING", index_text)
         self.assertIn("Feature", index_text)
@@ -63,6 +70,16 @@ class SpecWorkspaceContractTest(unittest.TestCase):
         self.assertIn("Implemented", feature_text)
         self.assertIn("Not implemented", feature_text)
         self.assertIn("Related specs", feature_text)
+
+    def test_completed_spec_has_consistent_task_and_progress_status(self) -> None:
+        spec = ROOT / ".doct" / "specs" / "doct-spec-workspace"
+        tasks = (spec / "tasks.md").read_text(encoding="utf-8")
+        progress = (spec / "progress.md").read_text(encoding="utf-8")
+
+        self.assertIn("Status: completed", tasks)
+        self.assertIn("Status: completed", progress)
+        self.assertIn("tests/test_spec_workspace_contract.py", tasks)
+        self.assertNotIn("Allowed files: `tests/test_validate_agents.py`", tasks)
 
     def test_readme_uses_doct_spec_workspace_as_canonical_long_running_state(self) -> None:
         text = (ROOT / "README.md").read_text(encoding="utf-8")
