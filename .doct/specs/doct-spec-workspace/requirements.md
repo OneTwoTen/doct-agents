@@ -1,6 +1,6 @@
 # Yêu cầu cho Doct Spec Workspace
 
-Status: implementing
+Status: completed
 
 ## Mục tiêu
 
