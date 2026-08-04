@@ -8,6 +8,7 @@ Status: implementing
 - Chỉ orchestrator có subagent routing.
 - Không thêm runtime dependency.
 - Giữ validator prompt budgets và validation ownership hiện có.
+- Checklist trong file này là authoritative completion ledger; `progress.md` chỉ lưu current state/evidence.
 
 ## M1 — Lock repository contract
 
@@ -15,11 +16,12 @@ Objective: thêm regression assertions cho `.doct/specs`, feature registry và L
 
 Allowed files: `tests/test_spec_workspace_contract.py`.
 
-Acceptance criteria:
-- Test yêu cầu `planning-agent` chứa `.doct/specs/<feature>/` và bốn artifact names.
-- Test yêu cầu orchestrator chứa `REQUIREMENTS_REVIEW`, `DESIGN_REVIEW`, `SELECT_EXECUTOR`, `FEATURE_IMPACT`, `UPDATE_FEATURE_REGISTRY`.
-- Test yêu cầu final reconciliation contract trước khi LONG_RUNNING được kết luận hoàn tất.
-- Test yêu cầu feature catalog contract và README dùng canonical `.doct/specs/...` path.
+Checklist:
+- [x] `M1-T1` Test yêu cầu `planning-agent` chứa `.doct/specs/<feature>/` và bốn artifact names.
+- [x] `M1-T2` Test yêu cầu orchestrator chứa `REQUIREMENTS_REVIEW`, `DESIGN_REVIEW`, `SELECT_EXECUTOR`, `FEATURE_IMPACT`, `UPDATE_FEATURE_REGISTRY`.
+- [x] `M1-T3` Test yêu cầu final reconciliation contract trước khi LONG_RUNNING được kết luận hoàn tất.
+- [x] `M1-T4` Test yêu cầu feature catalog contract và README dùng canonical `.doct/specs/...` path.
+- [ ] `M1-T5` Test khóa strict checklist contract: evidence-backed tick, blocked/deferred semantics và progress không duplicate checklist.
 
 Validation: `python -m unittest tests.test_spec_workspace_contract -v`.
 
@@ -29,24 +31,27 @@ Objective: biến planning-agent thành owner của executor-neutral spec worksp
 
 Allowed files: `agents/planning-agent.agent.md`.
 
-Acceptance criteria:
-- Không còn canonical path `docs/superpowers/plans/...`.
-- Tách WHAT/HOW/WORK/STATE ownership.
-- Checkpoint chỉ cập nhật `progress.md`; requirements/design/tasks chỉ thay đổi khi source-of-truth tương ứng thay đổi.
+Checklist:
+- [x] `M2-T1` Không còn canonical path `docs/superpowers/plans/...`.
+- [x] `M2-T2` Tách WHAT/HOW/WORK/STATE ownership.
+- [x] `M2-T3` Checkpoint chỉ cập nhật `progress.md`; requirements/design/tasks chỉ thay đổi khi source-of-truth tương ứng thay đổi.
+- [ ] `M2-T4` Checklist contract quy định `- [ ]`/`- [x]`, ID ổn định, evidence gate, blocked/deferred và downgrade khi evidence invalid.
 
 Validation: repository contract test + agent validator.
 
 ## M3 — Extend LONG_RUNNING orchestration
 
-Objective: orchestration dùng spec phases, executor selection, feature impact và final reconciliation lifecycle.
+Objective: orchestration dùng spec phases, executor selection, feature impact, checklist reconciliation và final reconciliation lifecycle.
 
 Allowed files: `agents/orchestrator.agent.md`, `agents/req-extractor.agent.md`.
 
-Acceptance criteria:
-- State machine mới có review gates và executor selection.
-- Milestone handoff dùng Spec path/Task/Milestone thay vì plan path.
-- Feature impact candidates được checkpoint.
-- Trước FINALIZE phải reconcile requirements/design/tasks/progress/feature registry với implementation và validation evidence thực tế.
+Checklist:
+- [x] `M3-T1` State machine có requirements/design review gates và executor selection.
+- [x] `M3-T2` Milestone handoff dùng Spec path/Task/Milestone thay vì plan path.
+- [x] `M3-T3` Feature impact candidates được checkpoint.
+- [x] `M3-T4` Trước FINALIZE reconcile requirements/design/tasks/progress/feature registry với implementation và validation evidence thực tế.
+- [ ] `M3-T5` Mỗi milestone bắt buộc qua `CHECKLIST_RECONCILE` trước CHECKPOINT; không advance từ worker status/prose.
+- [ ] `M3-T6` Checkbox chỉ được tick khi có implementation evidence + fresh required validation + không còn finding critical/high liên quan.
 
 Validation: repository contract test + agent validator.
 
@@ -56,10 +61,10 @@ Objective: docs-agent có mode cập nhật current-state feature record mà kh�
 
 Allowed files: `agents/docs-agent.agent.md`.
 
-Acceptance criteria:
-- Có mode `feature-update`.
-- Chỉ update `.doct/features` từ validated feature impact synthesis.
-- Không dùng feature registry thay cho README/public docs.
+Checklist:
+- [x] `M4-T1` Có mode `feature-update`.
+- [x] `M4-T2` Chỉ update `.doct/features` từ validated feature impact synthesis.
+- [x] `M4-T3` Không dùng feature registry thay cho README/public docs.
 
 Validation: repository contract test + agent validator.
 
@@ -69,11 +74,11 @@ Objective: tạo project architecture overview + feature catalog và cập nhậ
 
 Allowed files: `.doct/project.md`, `.doct/features/index.md`, `.doct/features/long-running.md`, `README.md`.
 
-Acceptance criteria:
-- `.doct/project.md` mô tả purpose, architecture và knowledge model nhưng không duplicate danh sách current capabilities vốn thuộc `.doct/features/index.md`.
-- Agent mới đọc `.doct/project.md` + feature index để biết architecture và capability hiện tại.
-- LONG_RUNNING feature record mô tả implemented/not implemented/current spec model.
-- README mô tả cách resume bằng `.doct/specs/<feature>/progress.md`.
+Checklist:
+- [x] `M5-T1` `.doct/project.md` mô tả purpose, architecture và knowledge model nhưng không duplicate current capabilities.
+- [x] `M5-T2` Agent mới đọc `.doct/project.md` + feature index để biết architecture và capability hiện tại.
+- [x] `M5-T3` LONG_RUNNING feature record mô tả implemented/not implemented/current spec model.
+- [x] `M5-T4` README mô tả cách resume bằng `.doct/specs/<feature>/progress.md`.
 
 Validation: link/path consistency review + package tests.
 
@@ -81,16 +86,23 @@ Validation: link/path consistency review + package tests.
 
 Objective: verify toàn bộ regression suite/package contracts và reconcile canonical spec state với implementation thực tế.
 
+Checklist:
+- [ ] `M6-T1` `npm run check` pass cho validation revision chứa strict checklist contract.
+- [ ] `M6-T2` CHECKLIST_RECONCILE xác nhận mọi required item M1-M5 có implementation + validation evidence hợp lệ.
+- [ ] `M6-T3` `progress.md` phản ánh đúng current item, blockers/deferred và validation revision; không duplicate checklist.
+- [ ] `M6-T4` `.doct/features/*` chỉ promote capability sang `stable` sau final validation + reconciliation.
+- [ ] `M6-T5` Spec status đổi `completed` chỉ sau khi mọi required checklist item là `- [x]`.
+
 Validation command:
 - `npm run check`
 
-Validation revision candidate: `f1e6fd9641d1ad48e31e5a7ad6078b47247623a2` (contains the latest agent/test contract changes; final evidence pending).
+Validation revision: revision gần nhất thay đổi agent/test contract liên quan checklist; final evidence pending.
 
 Final reconciliation:
 - `requirements.md` phản ánh final intended behavior.
 - `design.md` phản ánh architecture decisions cuối.
-- `tasks.md` phản ánh roadmap/work thực tế.
-- `progress.md` phản ánh validation revision/evidence tương ứng.
+- `tasks.md` phản ánh roadmap/work thực tế và authoritative checkbox state.
+- `progress.md` phản ánh validation revision/evidence tương ứng, current checklist item và blockers/deferred.
 - `.doct/features/*` chỉ ghi stable/current capability sau successful final validation.
 
-Definition of done: `npm run check` pass cho validation revision cuối, không còn canonical LONG_RUNNING instruction trỏ sang `docs/superpowers/plans`, spec artifacts không mâu thuẫn trạng thái và feature registry phản ánh behavior mới.
+Definition of done: `npm run check` pass cho validation revision cuối, mọi required checklist item là `- [x]`, không còn canonical LONG_RUNNING instruction trỏ sang `docs/superpowers/plans`, spec artifacts không mâu thuẫn trạng thái và feature registry phản ánh behavior mới.
