@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import json
 import os
 import tempfile
@@ -48,6 +50,30 @@ class OpenCodeInstallerTest(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
+
+    def run_main(self, args: list[str]) -> int:
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            return installer.main(args)
+
+    def write_cli_source(self) -> None:
+        (self.source / "orchestrator.agent.md").write_text(
+            source_agent(
+                name="orchestrator",
+                description="route work",
+                tools=["agent", "read", "search", "todo", "vscode/askQuestions"],
+                agents=["cli-executor"],
+                user_invocable=True,
+            ),
+            encoding="utf-8",
+        )
+        (self.source / "cli-executor.agent.md").write_text(
+            source_agent(
+                name="cli-executor",
+                tools=["execute", "read"],
+                user_invocable=True,
+            ),
+            encoding="utf-8",
+        )
 
     def test_opencode_targets_preserve_legacy_copilot_defaults(self) -> None:
         home = Path("/home/dev")
@@ -244,6 +270,60 @@ class OpenCodeInstallerTest(unittest.TestCase):
         self.assertTrue(
             installer.detect_opencode(workspace=workspace, home=home, path_env=str(empty_bin))
         )
+
+    def test_cli_explicit_opencode_install_status_uninstall(self) -> None:
+        self.write_cli_source()
+        workspace = self.root / "workspace-explicit"
+        workspace.mkdir()
+        base = ["--platform", "opencode", "--scope", "workspace", "--workspace", str(workspace)]
+        self.assertEqual(0, self.run_main(["install", *base, "--source-dir", str(self.source)]))
+
+        agent = workspace / ".opencode" / "agents" / "orchestrator.md"
+        config = workspace / ".opencode" / "opencode.json"
+        self.assertTrue(agent.exists())
+        self.assertEqual(PLAYWRIGHT_MCP := installer.PLAYWRIGHT_MCP, json.loads(config.read_text(encoding="utf-8"))["mcp"]["doct_playwright"])
+        self.assertEqual(0, self.run_main(["status", *base]))
+        self.assertEqual(0, self.run_main(["uninstall", *base]))
+        self.assertFalse(agent.exists())
+        self.assertNotIn("doct_playwright", json.loads(config.read_text(encoding="utf-8"))["mcp"])
+        self.assertEqual(installer.PLAYWRIGHT_MCP, PLAYWRIGHT_MCP)
+
+    def test_cli_all_installs_both_and_legacy_uninstall_is_copilot_only(self) -> None:
+        self.write_cli_source()
+        workspace = self.root / "workspace-all"
+        workspace.mkdir()
+        self.assertEqual(
+            0,
+            self.run_main([
+                "install", "--platform", "all", "--scope", "workspace", "--workspace", str(workspace),
+                "--source-dir", str(self.source),
+            ]),
+        )
+        copilot = workspace / ".github" / "agents" / "orchestrator.agent.md"
+        opencode = workspace / ".opencode" / "agents" / "orchestrator.md"
+        self.assertTrue(copilot.exists())
+        self.assertTrue(opencode.exists())
+
+        self.assertEqual(0, self.run_main(["uninstall", "--scope", "workspace", "--workspace", str(workspace)]))
+        self.assertFalse(copilot.exists())
+        self.assertTrue(opencode.exists())
+        self.assertEqual(
+            0,
+            self.run_main(["uninstall", "--platform", "opencode", "--scope", "workspace", "--workspace", str(workspace)]),
+        )
+
+    def test_cli_auto_detect_adds_opencode_to_copilot_install(self) -> None:
+        self.write_cli_source()
+        workspace = self.root / "workspace-auto"
+        (workspace / ".opencode").mkdir(parents=True)
+        self.assertEqual(
+            0,
+            self.run_main([
+                "install", "--scope", "workspace", "--workspace", str(workspace), "--source-dir", str(self.source),
+            ]),
+        )
+        self.assertTrue((workspace / ".github" / "agents" / "orchestrator.agent.md").exists())
+        self.assertTrue((workspace / ".opencode" / "agents" / "orchestrator.md").exists())
 
 
 if __name__ == "__main__":
