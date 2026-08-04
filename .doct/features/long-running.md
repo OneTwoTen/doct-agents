@@ -1,6 +1,6 @@
 # LONG_RUNNING
 
-Status: experimental
+Status: stable
 
 ## Capability
 
@@ -35,7 +35,7 @@ LONG_RUNNING điều phối yêu cầu nhiều phase/module bằng requirements 
 
 ## Validation
 
-Repository static contract tests và agent validator khóa path/lifecycle/tool boundaries. Capability chỉ chuyển sang `stable` sau khi full repository validation của thay đổi spec-workspace pass.
+GitHub Actions run `30891155471` passed all configured lanes: Ubuntu current, Ubuntu minimum và Windows current. Mỗi lane hoàn thành repository `npm run check`, bao gồm test/validator/package checks theo package scripts hiện hành.
 
 ## Related specs
 
