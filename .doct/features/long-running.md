@@ -1,6 +1,6 @@
 # LONG_RUNNING
 
-Status: experimental
+Status: stable
 
 ## Capability
 
@@ -45,7 +45,7 @@ LONG_RUNNING điều phối yêu cầu nhiều phase/module bằng requirements 
 
 ## Validation
 
-Fresh validation sau conflict resolution với `main` chưa được ghi nhận. Capability giữ `experimental` cho tới khi `npm run check` pass trên validation revision mới và `CHECKLIST_RECONCILE` hoàn tất.
+Validation revision `90a8b375e0e8d380859feb0fae6af5429c5623b9` đã pass GitHub Actions run `30903392325` trên Ubuntu current, Ubuntu minimum và Windows current. Mỗi lane hoàn thành `npm run check`. Các commit sau đó chỉ reconcile metadata `.doct/` và reuse evidence theo validation-revision rule.
 
 ## Related specs
 
