@@ -1,6 +1,6 @@
 # Doct Spec Workspace Implementation Tasks
 
-Status: completed
+Status: implementing
 
 ## Global constraints
 
@@ -81,14 +81,16 @@ Validation: link/path consistency review + package tests.
 
 Objective: verify toàn bộ regression suite/package contracts và reconcile canonical spec state với implementation thực tế.
 
-Validation commands:
+Validation command:
 - `npm run check`
+
+Validation revision candidate: `f1e6fd9641d1ad48e31e5a7ad6078b47247623a2` (contains the latest agent/test contract changes; final evidence pending).
 
 Final reconciliation:
 - `requirements.md` phản ánh final intended behavior.
 - `design.md` phản ánh architecture decisions cuối.
-- `tasks.md` phản ánh roadmap/work thực tế và có `Status: completed` khi toàn bộ work hoàn tất.
-- `progress.md` phản ánh fresh validation evidence trên final revision.
-- `.doct/features/*` chỉ ghi stable/current capability dựa trên cùng fresh evidence.
+- `tasks.md` phản ánh roadmap/work thực tế.
+- `progress.md` phản ánh validation revision/evidence tương ứng.
+- `.doct/features/*` chỉ ghi stable/current capability sau successful final validation.
 
-Definition of done: `npm run check` pass trên final revision, không còn canonical LONG_RUNNING instruction trỏ sang `docs/superpowers/plans`, spec artifacts không mâu thuẫn trạng thái và feature registry phản ánh behavior mới.
+Definition of done: `npm run check` pass cho validation revision cuối, không còn canonical LONG_RUNNING instruction trỏ sang `docs/superpowers/plans`, spec artifacts không mâu thuẫn trạng thái và feature registry phản ánh behavior mới.
