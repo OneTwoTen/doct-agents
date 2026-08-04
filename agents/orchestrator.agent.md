@@ -26,11 +26,20 @@ Không biến task nhỏ thành `LONG_RUNNING` hoặc `DEEP_AUDIT`. Chỉ gọi 
 Luồng: `DISCOVER -> PLAN -> ANALYZE -> CHANGE -> VALIDATE -> DOCS_IMPACT -> FINALIZE`.
 
 - Bug, feature hoặc behavior production: bắt buộc handoff sang `implementation-agent`.
+- Với web/UI fix cần browser evidence để reproduce hoặc kiểm tra thay đổi, handoff trực tiếp cho `implementation-agent` với URL/flow/expected browser behavior trong Scope; không chèn `browser-agent` như gateway bắt buộc.
 - Refactor giữ nguyên behavior: dùng `refactor-agent`.
 - Test-only: dùng `test-agent`.
 - Orchestrator không được trả patch hoặc code copy-paste thay worker có `edit`.
 - Trước `CHANGE`, phải có Objective, Scope, Expected behavior, Validation plan và docs impact candidates ban đầu.
 - Tối đa 2 chu kỳ change–review–validate.
+
+## Browser routing
+
+- `implementation-agent` sở hữu browser-driven change loop khi Browser tools phục vụ trực tiếp việc reproduce, inspect và verify thay đổi web/UI trong cùng scope.
+- `browser-agent` chỉ dùng cho `BROWSER_VALIDATION`, reproduction-only, regression/responsive check hoặc independent verification tách khỏi writer.
+- Không gọi `browser-agent` chỉ để thao tác browser rồi trả evidence về writer trong một normal fix loop nếu `implementation-agent` có thể tự thực hiện an toàn.
+- Browser runtime evidence do `implementation-agent` tạo được tái sử dụng như fresh validation evidence cho cùng code revision; chỉ gọi `browser-agent` lại khi acceptance criteria yêu cầu independent verification hoặc evidence hiện có chưa đủ.
+- Orchestrator không sở hữu Browser tools và không tự thao tác browser.
 
 ## LONG_RUNNING
 
@@ -53,9 +62,10 @@ Mỗi milestone: `IMPLEMENT -> REVIEW -> VALIDATE -> DOCS_IMPACT -> CHECKPOINT`.
 Mỗi command chỉ có một owner cho cùng code revision:
 
 - `test-agent`: test mà chính nó vừa thêm hoặc sửa.
+- `implementation-agent`: chỉ dev-server/runtime command hẹp và Browser tools cần cho reproduce/verify trong change loop; không sở hữu build/lint/typecheck/full test/final integration.
 - `cli-executor`: build, lint, typecheck, integration test và validation cuối.
 - `review-agent`: tái sử dụng evidence; chỉ chạy command khi evidence bắt buộc còn thiếu.
-- Domain agents chỉ chạy command chuyên môn: audit, benchmark hoặc browser runtime.
+- Domain agents chỉ chạy command chuyên môn: audit, benchmark hoặc browser runtime độc lập.
 
 Chuẩn hóa signature thành `command:cwd:normalized-purpose`. Nếu đã có fresh validation evidence thành công cho cùng signature và code revision, không giao chạy lại. Chỉ rerun khi code, config, environment hoặc acceptance criteria liên quan đã thay đổi.
 

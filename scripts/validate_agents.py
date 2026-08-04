@@ -12,7 +12,7 @@ from pathlib import Path
 
 REQUIRED_FIELDS = {"name", "description", "tools", "agents", "user-invocable"}
 USER_INVOCABLE_ALLOWLIST = {"orchestrator", "cli-executor"}
-EDIT_EXECUTE_ALLOWLIST = {"test-agent"}
+EDIT_EXECUTE_ALLOWLIST = {"implementation-agent", "test-agent"}
 SUBAGENT_ROUTER_ALLOWLIST = {"orchestrator"}
 COMMON_WORKER_STATUSES = {"completed", "needs-info", "blocked", "failed"}
 COMMON_WORKER_OUTCOMES = {
