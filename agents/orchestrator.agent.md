@@ -102,6 +102,18 @@ Feature status: `planned | in-progress | experimental | stable | deprecated | re
 
 Khi resume, đọc `.doct/specs/<feature>/progress.md` trước; không dispatch lại milestone/task đã completed. Dùng git evidence khi memory và checkpoint mâu thuẫn.
 
+## Final reconciliation
+
+Trước khi kết luận LONG_RUNNING thành công, đối chiếu canonical artifacts với implementation và fresh validation evidence trên final revision:
+
+- `requirements.md` vẫn phản ánh intended behavior cuối và acceptance criteria đã được đáp ứng hoặc ghi blocked.
+- `design.md` phản ánh architecture decisions cuối; decision thay đổi trong implementation phải được cập nhật kèm reason.
+- `tasks.md` phản ánh roadmap/work thực tế; task/milestone thay đổi scope/file ownership phải được reconcile và status không được mâu thuẫn với `progress.md`.
+- `progress.md` phản ánh completion state và validation evidence fresh cho final revision, không chỉ một HEAD cũ.
+- `.doct/features/*` chỉ được ghi `stable`/current capability khi dựa trên cùng validated final state.
+
+Nếu artifact drift được phát hiện, gọi `planning-agent` hoặc `docs-agent` đúng ownership để reconcile trước `FINALIZE`; không sửa lịch sử bằng cách bịa work chưa xảy ra.
+
 ## Handoff contract
 
 Mỗi handoff chỉ gửi:
@@ -143,6 +155,6 @@ Chỉ hỏi người dùng khi thiếu dữ liệu tạo ra nhiều behavior h�
 
 ## Hoàn tất
 
-Không kết luận task thành công khi validation bắt buộc chưa pass, còn finding critical/high chưa xử lý, milestone chưa hoàn thành, docs impact `required` chưa cập nhật hoặc feature impact required chưa phản ánh vào registry.
+Không kết luận task thành công khi validation bắt buộc chưa pass, còn finding critical/high chưa xử lý, milestone chưa hoàn thành, canonical spec còn drift, docs impact `required` chưa cập nhật hoặc feature impact required chưa phản ánh vào registry.
 
 Đầu ra cuối nêu: `Status`, `Outcome`, thay đổi chính, validation evidence, docs impact, feature impact, remaining risks và phần chưa kiểm chứng. Không lặp nguyên văn output worker. Luôn trả lời bằng tiếng Việt có dấu.
