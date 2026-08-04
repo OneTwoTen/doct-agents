@@ -196,37 +196,53 @@ Luồng:
 ```text
 DISCOVER
 → REQUIREMENTS
+→ REQUIREMENTS_REVIEW
 → DELIBERATE
 → DESIGN
+→ DESIGN_REVIEW
 → PLAN
+→ SELECT_EXECUTOR
 → MILESTONE_LOOP
+    → PREPARE_MILESTONE
     → IMPLEMENT
     → REVIEW
     → VALIDATE
     → DOCS_IMPACT
     → CHECKPOINT
 → FINAL_REVIEW
+→ FINAL_VALIDATE
+→ FEATURE_IMPACT
+→ UPDATE_FEATURE_REGISTRY
 → FINALIZE
 ```
 
-### Roadmap và milestone
+### Spec workspace
 
-Trước implementation, `planning-agent` tạo plan bền vững tại:
+LONG_RUNNING không lưu canonical state trong plan của một executor. `planning-agent` tạo workspace được commit cùng project:
 
 ```text
-docs/superpowers/plans/YYYY-MM-DD-<feature>-implementation.md
+.doct/specs/<feature>/
+├── requirements.md   # WHAT
+├── design.md         # HOW
+├── tasks.md          # WORK
+└── progress.md       # STATE
 ```
 
-Mỗi milestone phải có:
+`requirements.md` chứa goal, non-goals, requirements, constraints và acceptance criteria. `design.md` chứa architecture decisions, interfaces, migration/rollback, risks và validation strategy. `tasks.md` chứa roadmap/milestone, dependencies, allowed/forbidden files và definition of done. `progress.md` chỉ giữ runtime/checkpoint state để resume.
 
-- objective và dependency;
-- allowed/forbidden files;
-- expected behavior và acceptance criteria;
-- validation plan;
-- docs impact candidates;
-- definition of done.
+Một roadmap có tối đa 6 milestone. Scope lớn hơn phải chia thành phase độc lập.
 
-Một plan có tối đa 6 milestone. Scope lớn hơn phải chia thành các phase độc lập.
+### Feature catalog
+
+Specs mô tả quá trình thay đổi, nhưng current-state capability được tổng hợp riêng:
+
+```text
+.doct/project.md
+.doct/features/index.md
+.doct/features/<feature>.md
+```
+
+`FEATURE_IMPACT` chạy sau final validation. Nếu capability thay đổi, `docs-agent` mode `feature-update` cập nhật feature index và feature record. Feature registry không thay thế README, API docs hoặc runbook.
 
 ### Agent deliberation
 
@@ -234,12 +250,16 @@ Các worker không gọi trực tiếp nhau. Orchestrator làm trung gian để 
 
 1. `independent-analysis`: mặc định tối đa 2 agent; chỉ gọi agent thứ ba khi có domain risk rõ như security, dependency hoặc performance.
 2. `challenge`: tối đa 2 agent và chỉ chạy khi proposal có mâu thuẫn, migration/rollback hoặc assumption rủi ro.
-3. `synthesis`: `planning-agent` tổng hợp requirements, proposal, challenge và decisions thành roadmap.
+3. `synthesis`: requirements/design/tasks được cập nhật theo đúng source-of-truth tương ứng.
 
 `architecture-agent` hỗ trợ hai mode:
 
 - `proposal`: đề xuất tối đa 3 options và trade-off.
 - `challenge`: tìm coupling, failure mode, migration/rollback risk và validation gap.
+
+### Executor boundary
+
+Orchestrator chọn executor sau khi canonical spec ổn định. Superpowers, OpenCode hoặc native execution chỉ sở hữu mechanics như worktree, task dispatch và local runner; doct-agents vẫn sở hữu milestone contract, review budget, validation evidence và checkpoint.
 
 ### Kết quả worker và validation ownership
 
@@ -268,18 +288,18 @@ Orchestrator tự tiếp tục giữa các milestone. Nó chỉ hỏi người d
 - cần credential hoặc quyền ngoài workspace;
 - thao tác phá hủy hoặc không thể rollback;
 - scope drift lớn so với roadmap;
-- conflict code không thể giải quyết an toàn;
+- conflict code/spec không thể giải quyết an toàn;
 - validation bắt buộc không thể chạy;
 - retry budget đã hết nhưng failure signature không đổi.
 
 ### Checkpoint và tiếp tục ở chat mới
 
-Sau mỗi milestone, plan được cập nhật với completed/current milestone, validation evidence, decisions, docs impact, remaining risks và next milestone.
+Sau mỗi milestone, `progress.md` được cập nhật với completed/current work, validation evidence, decision changes, docs impact, feature impact candidates, remaining risks và next work.
 
 Khi cần mở chat mới, dùng prompt:
 
 ```text
-Tiếp tục triển khai theo plan docs/superpowers/plans/2026-07-30-<feature>-implementation.md. Đọc Progress checkpoint, không làm lại milestone đã completed và tiếp tục từ milestone đầu tiên chưa hoàn thành.
+Tiếp tục triển khai LONG_RUNNING tại .doct/specs/<feature>/. Đọc progress.md trước, không làm lại milestone/task đã completed và tiếp tục từ work đầu tiên chưa hoàn thành.
 ```
 
 ## Documentation impact lifecycle
@@ -308,10 +328,11 @@ Thường cần cập nhật docs khi thay đổi:
 
 Không cần cập nhật docs cho refactor nội bộ giữ nguyên contract, local variable rename, test-only change, format/lint hoặc tối ưu nội bộ không đổi vận hành.
 
-`docs-agent` có hai mode:
+`docs-agent` có ba mode:
 
 - `author`: task thuần tài liệu.
 - `impact-update`: chỉ sửa section/file thực sự bị ảnh hưởng và liệt kê tài liệu đã kiểm tra nhưng không cần sửa.
+- `feature-update`: cập nhật `.doct/features` từ validated feature impact synthesis.
 
 ## Prompt mẫu
 
@@ -336,7 +357,7 @@ Mở http://localhost:3000, kiểm tra luồng đăng nhập, chụp screenshot 
 ### Triển khai dài hơi
 
 ```text
-Triển khai tính năng này theo LONG_RUNNING. Tự trích xuất requirements, cho architecture/security/performance phân tích độc lập nếu liên quan, phản biện proposal, tạo roadmap tối đa 6 milestone và thực hiện tự động. Sau mỗi milestone phải review, validate, đánh giá docs impact và cập nhật checkpoint. Chỉ hỏi tôi khi bị blocked theo autonomous blocker policy.
+Triển khai tính năng này theo LONG_RUNNING. Tự trích xuất requirements, review ambiguity, deliberation kiến trúc khi cần, tạo `.doct/specs/<feature>/`, chọn executor phù hợp và thực hiện tối đa 6 milestone. Sau mỗi milestone phải review, validate, đánh giá docs/feature impact và checkpoint. Chỉ hỏi tôi khi bị blocked theo autonomous blocker policy.
 ```
 
 ## Agent chính
@@ -345,7 +366,7 @@ Triển khai tính năng này theo LONG_RUNNING. Tự trích xuất requirements
 | --- | --- |
 | `orchestrator` | Route FAST_FIX/LONG_RUNNING, quản lý state, budget, deliberation và checkpoint |
 | `architecture-agent` | Đề xuất hoặc phản biện kiến trúc cho yêu cầu dài hơi |
-| `planning-agent` | Tạo roadmap, milestone, file ownership và progress checkpoint |
+| `planning-agent` | Tạo/duy trì requirements, design, tasks và progress cho LONG_RUNNING |
 | `implementation-agent` | Sửa bug, triển khai logic production và trả docs impact candidates |
 | `cli-executor` | Chạy terminal/CLI, thu exit code và log quyết định |
 | `review-agent` | Review qa/quality, milestone và final cross-milestone |
@@ -356,7 +377,7 @@ Triển khai tính năng này theo LONG_RUNNING. Tự trích xuất requirements
 | `dependency-agent` | Audit dependency, lockfile và vulnerability |
 | `performance-agent` | Benchmark và phân tích bottleneck dựa trên số liệu |
 | `research-agent` | Tra cứu thông tin kỹ thuật ngoài repo |
-| `docs-agent` | Author docs hoặc impact-update đúng tài liệu liên quan |
+| `docs-agent` | Author docs, impact-update hoặc feature-update từ validated evidence |
 | `req-extractor` | Chuẩn hóa requirements, dependency và milestone candidates |
 | `aggregator-agent` | Khử trùng lặp findings từ nhiều worker |
 | `agent-authoring` | Tạo/cập nhật custom agent và skill |
@@ -423,10 +444,11 @@ Nếu workflow vẫn dùng token cho publish, repository cần secret `NPM_TOKEN
 
 ```text
 .
+├── .doct/                        # Project/spec/feature knowledge cho LONG_RUNNING
 ├── agents/                       # Agent source và nội dung npm package
 ├── bin/cli.js                    # npm executable cho npx, bunx và pnpm dlx
 ├── bin/doct-agents.js            # CLI implementation và installer logic
-├── docs/superpowers/             # Design specs và implementation plans
+├── docs/superpowers/             # Historical design specs và implementation plans
 ├── install.py                    # Installer Python fallback
 ├── package.json                  # npm package metadata và bin mapping
 ├── scripts/check_release.py      # Kiểm tra release tag và package version
