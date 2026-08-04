@@ -30,6 +30,35 @@ PROMPT_BODY_BUDGETS = {
     "browser-agent": 9_000,
 }
 DEFAULT_PROMPT_BODY_BUDGET = 7_000
+
+# These source capabilities have a defined renderer mapping in both installers.
+OPENCODE_MAPPABLE_SOURCE_TOOLS = {
+    "read",
+    "search",
+    "edit",
+    "execute",
+    "agent",
+    "todo",
+    "vscode/askQuestions",
+    "web",
+}
+
+# Copilot exposes these as VS Code Browser tools. The OpenCode renderer maps the
+# browser-agent capability as a whole to the isolated doct_playwright MCP tool
+# namespace, so these names are valid only on browser-agent source definitions.
+BROWSER_RUNTIME_TOOLS = {
+    "openBrowserPage",
+    "navigatePage",
+    "readPage",
+    "screenshotPage",
+    "clickElement",
+    "hoverElement",
+    "dragElement",
+    "typeInPage",
+    "handleDialog",
+    "runPlaywrightCode",
+}
+
 FRONTMATTER_PATTERN = re.compile(r"\A---\s*\n(.*?)\n---(?:\s*\n|\Z)", re.DOTALL)
 STATUS_LINE_PATTERN = re.compile(r"^\s*-\s*`?Status`?\s*:\s*(.+)$", re.MULTILINE)
 OUTCOME_LINE_PATTERN = re.compile(r"^\s*-\s*`?Outcome`?\s*:\s*(.+)$", re.MULTILINE)
@@ -181,6 +210,19 @@ def validate(directory: Path) -> list[str]:
             errors.append(f"{agent.path}: duplicate tool entry")
         if len(agent.agents) != len(set(agent.agents)):
             errors.append(f"{agent.path}: duplicate agent reference")
+
+        for tool in agent.tools:
+            if tool in BROWSER_RUNTIME_TOOLS:
+                if agent.name != "browser-agent":
+                    errors.append(
+                        f"{agent.path}: browser runtime tool '{tool}' is only allowed for "
+                        "browser-agent because OpenCode maps that capability to doct_playwright MCP"
+                    )
+                continue
+            if tool not in OPENCODE_MAPPABLE_SOURCE_TOOLS:
+                errors.append(
+                    f"{agent.path}: OpenCode renderer has unsupported source tool '{tool}'"
+                )
 
         text = agent.path.read_text(encoding="utf-8")
         for declared in declared_status_groups(text):
