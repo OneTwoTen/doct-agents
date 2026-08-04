@@ -179,12 +179,20 @@ DISCOVER
 → FINALIZE
 ```
 
-Với code production, orchestrator bắt buộc giao sửa file cho `implementation-agent`. Sau validation, orchestrator đánh giá tác động tài liệu; không tự động sửa README nếu thay đổi không ảnh hưởng tài liệu liên quan.
+Với code production, orchestrator bắt buộc giao sửa file cho `implementation-agent`. Với web/UI task, `implementation-agent` có thể dùng trực tiếp built-in Browser tools trong cùng worker để chạy vòng `reproduce → inspect → edit → browser verify`; không cần handoff qua `browser-agent` chỉ để thao tác browser. `browser-agent` được giữ cho independent validation, reproduction-only, regression/responsive check hoặc khi cần evidence tách khỏi writer. Build, lint, typecheck và final integration validation vẫn thuộc `cli-executor`.
 
-Ví dụ:
+Sau validation, orchestrator đánh giá tác động tài liệu; không tự động sửa README nếu thay đổi không ảnh hưởng tài liệu liên quan.
+
+Ví dụ backend:
 
 ```text
 Sửa lỗi campaign eligibility trong hai service này, thêm test hẹp nhất, chạy validation và chỉ cập nhật docs nếu public behavior hoặc vận hành bị thay đổi.
+```
+
+Ví dụ web/UI:
+
+```text
+Sửa lỗi nút Save không hoạt động. Reproduce bằng integrated browser, sửa trong scope liên quan và browser-verify lại cùng flow trước khi trả kết quả.
 ```
 
 ## Workflow dài hơi: LONG_RUNNING
@@ -245,20 +253,21 @@ Các worker không gọi trực tiếp nhau. Orchestrator làm trung gian để 
 
 `Status` biểu diễn trạng thái thực thi của worker: `completed`, `needs-info`, `blocked` hoặc `failed`. `Outcome` biểu diễn ý nghĩa của kết quả: `passed`, `change-made`, `defect-found`, `validation-failed` hoặc `no-change`. Vì vậy `Status: completed` không tự động có nghĩa toàn bộ task đã thành công.
 
-Mỗi command có một owner mặc định cho cùng code revision:
+Mỗi command hoặc validation domain có một owner mặc định cho cùng code revision:
 
 | Owner | Phạm vi validation |
 | --- | --- |
+| `implementation-agent` | Browser runtime evidence hẹp trong chính web/UI change loop mà agent đang sửa; không sở hữu final pipeline |
 | `test-agent` | Test hẹp mà chính agent vừa thêm hoặc sửa |
 | `review-agent` | Tái sử dụng evidence; chỉ chạy command hẹp khi finding quan trọng còn thiếu evidence |
 | `cli-executor` | Build, lint, typecheck, integration test và validation cuối |
 | `dependency-agent` | Audit, outdated và dependency tree |
 | `performance-agent` | Benchmark và profiling |
-| `browser-agent` | Browser runtime và user flow |
+| `browser-agent` | Independent browser validation, reproduction-only và user-flow evidence tách khỏi writer |
 
 Orchestrator chuẩn hóa command signature và không chạy lại command đã có fresh successful evidence cho cùng code revision. Handoff context giới hạn tối đa 10 bullet, ưu tiên file/symbol/evidence reference và không copy nguyên worker result hoặc toàn bộ lịch sử. Summary mặc định tối đa 120 từ; finding/change/domain fields chỉ xuất hiện khi có dữ liệu.
 
-Validator kiểm tra Outcome vocabulary và prompt-size budget để ngăn agent prompt phình không kiểm soát. Budget hiện tại là 12.000 ký tự cho orchestrator, 9.000 cho browser-agent và 7.000 cho các worker còn lại.
+Validator kiểm tra Outcome vocabulary và prompt-size budget để ngăn agent prompt phình không kiểm soát. Budget hiện tại là 12.000 ký tự cho orchestrator, 9.000 cho browser-agent và 7.000 cho các worker còn lại. Validator cũng chỉ cho phép cặp quyền `edit + execute` trên các agent được allowlist rõ ràng; `implementation-agent` dùng `execute` cho dev-server/runtime loop hẹp, còn validation cuối vẫn thuộc `cli-executor`.
 
 ### Chế độ tự động cao
 
@@ -327,10 +336,16 @@ Review module này theo hướng correctness và test gap. Chỉ sửa finding h
 Chạy project trong thư mục backend, tự tìm command phù hợp từ cấu hình repo và báo URL hoặc lỗi quyết định.
 ```
 
-### Kiểm tra UI
+### Sửa và kiểm tra UI trong cùng loop
 
 ```text
-Mở http://localhost:3000, kiểm tra luồng đăng nhập, chụp screenshot ở bước lỗi và báo expected/actual.
+Sửa lỗi form checkout này. Dùng integrated browser để reproduce, inspect state cần thiết, sửa code trong scope và verify lại cùng user flow. Chỉ gọi browser-agent nếu cần independent validation sau khi sửa.
+```
+
+### Chỉ kiểm tra UI, không sửa code
+
+```text
+Mở http://localhost:3000, kiểm tra luồng đăng nhập, chụp screenshot ở bước lỗi và báo expected/actual. Đây là browser-only validation, không sửa code.
 ```
 
 ### Triển khai dài hơi
@@ -343,15 +358,15 @@ Triển khai tính năng này theo LONG_RUNNING. Tự trích xuất requirements
 
 | Agent | Vai trò |
 | --- | --- |
-| `orchestrator` | Route FAST_FIX/LONG_RUNNING, quản lý state, budget, deliberation và checkpoint |
+| `orchestrator` | Route FAST_FIX/LONG_RUNNING, quản lý state, budget, deliberation và checkpoint; không sở hữu Browser tools |
 | `architecture-agent` | Đề xuất hoặc phản biện kiến trúc cho yêu cầu dài hơi |
 | `planning-agent` | Tạo roadmap, milestone, file ownership và progress checkpoint |
-| `implementation-agent` | Sửa bug, triển khai logic production và trả docs impact candidates |
-| `cli-executor` | Chạy terminal/CLI, thu exit code và log quyết định |
+| `implementation-agent` | Sửa bug/logic production; với web/UI có thể tự reproduce và browser-verify trong cùng change loop |
+| `cli-executor` | Chạy terminal/CLI, thu exit code và log quyết định; sở hữu final build/lint/typecheck/integration validation |
 | `review-agent` | Review qa/quality, milestone và final cross-milestone |
 | `refactor-agent` | Refactor nhỏ, an toàn, không đổi public behavior |
 | `test-agent` | Viết/cập nhật test và chạy validation hẹp |
-| `browser-agent` | Kiểm tra UI/runtime bằng VS Code Browser tools |
+| `browser-agent` | Independent UI/runtime validation read-only bằng VS Code Browser tools; không phải browser gateway bắt buộc |
 | `security-agent` | Security review read-only |
 | `dependency-agent` | Audit dependency, lockfile và vulnerability |
 | `performance-agent` | Benchmark và phân tích bottleneck dựa trên số liệu |
@@ -371,7 +386,15 @@ Bật VS Code Browser chat tools:
 }
 ```
 
-`browser-agent` ưu tiên `openBrowserPage`, `readPage`, interaction tools và `screenshotPage`. `runPlaywrightCode` chỉ dùng khi các tool cơ bản không đủ.
+Browser capability được dùng theo mô hình hybrid:
+
+- `implementation-agent` dùng trực tiếp `openBrowserPage`, `navigatePage`, `readPage`, `clickElement`, `hoverElement`, `dragElement`, `typeInPage`, `handleDialog`, `screenshotPage` và `runPlaywrightCode` khi web/UI change cần reproduce hoặc verify runtime trong cùng worker.
+- `browser-agent` có cùng Browser tool set nhưng giữ read-only để làm independent validation, reproduction-only, regression/responsive flow và evidence tách khỏi writer.
+- `orchestrator` không có Browser tools và không tự browser-test.
+- `runPlaywrightCode` chỉ dùng khi primitive Browser tools không đủ cho assertion lặp, selector có điều kiện hoặc flow phức tạp.
+- `implementation-agent` chỉ dùng `execute` cho dev-server/runtime command hẹp phục vụ change loop; build, lint, typecheck và final integration validation vẫn giao `cli-executor`.
+
+Nếu cần session/login đang có trong tab hiện tại, share tab với agent trước. Agent không nên tự tạo workaround đăng nhập bằng profile cá nhân hoặc thay đổi production data khi chưa được phép.
 
 ## Dùng như Git submodule
 
