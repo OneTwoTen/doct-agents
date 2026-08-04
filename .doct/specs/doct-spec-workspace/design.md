@@ -1,6 +1,6 @@
 # Thiết kế Doct Spec Workspace
 
-Status: implementing
+Status: completed
 
 ## Kiến trúc
 
