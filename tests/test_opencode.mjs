@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -20,6 +21,7 @@ import {
   openCodeConfigPath,
   patchOpenCodeConfig,
   renderOpenCodeAgent,
+  run,
   uninstallAgents,
 } from "../bin/doct-agents.js";
 
@@ -38,6 +40,19 @@ function fixture() {
     sourceDir: join(root, "source"),
     targetDir: join(root, ".opencode", "agents"),
   };
+}
+
+function withoutConsole(callback) {
+  const previousLog = console.log;
+  const previousError = console.error;
+  console.log = () => {};
+  console.error = () => {};
+  try {
+    return callback();
+  } finally {
+    console.log = previousLog;
+    console.error = previousError;
+  }
 }
 
 test("OpenCode target paths coexist with legacy Copilot defaults", () => {
@@ -229,4 +244,72 @@ test("OpenCode auto-detection recognizes PATH commands and workspace config", ()
   assert.equal(detectOpenCode({ workspace, home, pathEnv: emptyPath }), false);
   mkdirSync(join(workspace, ".opencode"));
   assert.equal(detectOpenCode({ workspace, home, pathEnv: emptyPath }), true);
+});
+
+test("CLI explicitly installs, reports, and uninstalls OpenCode workspace support", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "doct-agents-cli-opencode-"));
+  assert.equal(
+    withoutConsole(() => run(["install", "--platform", "opencode", "--scope", "workspace", "--workspace", workspace])),
+    0,
+  );
+
+  const agentPath = join(workspace, ".opencode", "agents", "orchestrator.md");
+  const configPath = join(workspace, ".opencode", "opencode.json");
+  assert.equal(existsSync(agentPath), true);
+  assert.equal(existsSync(configPath), true);
+  assert.deepEqual(JSON.parse(readFileSync(configPath, "utf8")).mcp.doct_playwright, PLAYWRIGHT_MCP);
+  assert.equal(
+    withoutConsole(() => run(["status", "--platform", "opencode", "--scope", "workspace", "--workspace", workspace])),
+    0,
+  );
+  assert.equal(
+    withoutConsole(() => run(["uninstall", "--platform", "opencode", "--scope", "workspace", "--workspace", workspace])),
+    0,
+  );
+  assert.equal(existsSync(agentPath), false);
+  const remainingConfig = JSON.parse(readFileSync(configPath, "utf8"));
+  assert.equal(Boolean(remainingConfig.mcp?.doct_playwright), false);
+});
+
+test("CLI platform all installs both layouts and legacy uninstall remains Copilot-only", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "doct-agents-cli-all-"));
+  assert.equal(
+    withoutConsole(() => run(["install", "--platform", "all", "--scope", "workspace", "--workspace", workspace])),
+    0,
+  );
+  const copilotAgent = join(workspace, ".github", "agents", "orchestrator.agent.md");
+  const openCodeAgent = join(workspace, ".opencode", "agents", "orchestrator.md");
+  assert.equal(existsSync(copilotAgent), true);
+  assert.equal(existsSync(openCodeAgent), true);
+
+  assert.equal(
+    withoutConsole(() => run(["uninstall", "--scope", "workspace", "--workspace", workspace])),
+    0,
+  );
+  assert.equal(existsSync(copilotAgent), false);
+  assert.equal(existsSync(openCodeAgent), true);
+
+  assert.equal(
+    withoutConsole(() => run(["uninstall", "--platform", "opencode", "--scope", "workspace", "--workspace", workspace])),
+    0,
+  );
+});
+
+test("CLI auto-detect installs OpenCode in addition to Copilot", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "doct-agents-cli-auto-"));
+  mkdirSync(join(workspace, ".opencode"), { recursive: true });
+  assert.equal(
+    withoutConsole(() => run(["install", "--scope", "workspace", "--workspace", workspace])),
+    0,
+  );
+  assert.equal(existsSync(join(workspace, ".github", "agents", "orchestrator.agent.md")), true);
+  assert.equal(existsSync(join(workspace, ".opencode", "agents", "orchestrator.md")), true);
+});
+
+test("CLI rejects invalid platforms and ambiguous all-platform custom targets", () => {
+  assert.throws(() => run(["install", "--platform", "unknown"]), /platform/i);
+  assert.throws(
+    () => run(["install", "--platform", "all", "--target", join(tmpdir(), "agents")]),
+    /target/i,
+  );
 });
