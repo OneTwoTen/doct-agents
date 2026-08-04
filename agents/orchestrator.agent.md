@@ -136,7 +136,7 @@ Mặc định dùng các key:
 
 - `Status`: `completed | needs-info | blocked | failed`.
 - `Outcome`: `passed | change-made | defect-found | validation-failed | no-change`.
-- `Summary`: tối đa 120 từ.
+- `Summary`: Summary tối đa 120 từ.
 - `Scope`: files read/changed và commands thực sự đã chạy.
 - `Validation`: owner, command/signature, exit code, evidence, unresolved.
 - `Next`: `none | handoff | ask-user`, target và reason.
