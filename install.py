@@ -55,7 +55,7 @@ SIMPLE_PERMISSIONS = (
 
 
 class InstallConflict(RuntimeError):
-    """Raised when installation would overwrite an unmanaged or modified file."""
+    """Raised when installation would overwrite unmanaged or modified content."""
 
 
 class InstallResult(NamedTuple):
@@ -82,10 +82,98 @@ class OpenCodeConfigPatch(NamedTuple):
     changed: bool
 
 
+class OpenCodeStatus(NamedTuple):
+    installed: list[str]
+    modified: list[str]
+    missing: list[str]
+    target: Path
+    config: str
+    config_path: Path
+
+
+class OpenCodeUninstallResult(NamedTuple):
+    removed: int
+    preserved: list[str]
+    target: Path
+    config_preserved: bool
+    config_path: Optional[Path]
+
+
 def validate_platform(platform: str) -> str:
     if platform not in {"copilot", "opencode"}:
         raise InstallConflict(f"Unsupported platform: {platform!r}")
     return platform
+
+
+def normalize_target(target_dir: Path) -> Path:
+    return Path(os.path.abspath(str(target_dir.expanduser())))
+
+
+def is_link_like(stat_result: os.stat_result) -> bool:
+    attributes = getattr(stat_result, "st_file_attributes", 0)
+    return stat.S_ISLNK(stat_result.st_mode) or bool(
+        attributes & REPARSE_POINT_ATTRIBUTE
+    )
+
+
+def lstat_or_none(path: Path) -> Optional[os.stat_result]:
+    try:
+        return os.lstat(path)
+    except FileNotFoundError:
+        return None
+
+
+def validate_path_components(target_dir: Path) -> Path:
+    target = normalize_target(target_dir)
+    parts = target.parts
+    if not parts:
+        raise InstallConflict(f"Invalid target path: {target}")
+    current = Path(parts[0])
+    for part in parts[1:]:
+        current = current / part
+        entry = lstat_or_none(current)
+        if entry is None:
+            break
+        if is_link_like(entry):
+            raise InstallConflict(
+                f"Target path component is a symbolic link or junction: {current}"
+            )
+        if current != target and not stat.S_ISDIR(entry.st_mode):
+            raise InstallConflict(f"Target path component is not a directory: {current}")
+    return target
+
+
+def validate_existing_target(target_dir: Path) -> Path:
+    target = validate_path_components(target_dir)
+    entry = lstat_or_none(target)
+    if entry is not None and not stat.S_ISDIR(entry.st_mode):
+        raise InstallConflict(f"Target must be a directory: {target}")
+    return target
+
+
+def prepare_target(target_dir: Path) -> Path:
+    target = validate_existing_target(target_dir)
+    target.mkdir(parents=True, exist_ok=True)
+    validate_path_components(target)
+    entry = lstat_or_none(target)
+    if entry is None or is_link_like(entry) or not stat.S_ISDIR(entry.st_mode):
+        raise InstallConflict(f"Target must be a real directory: {target}")
+    return target
+
+
+def assert_regular_path(path: Path, label: str) -> bool:
+    entry = lstat_or_none(path)
+    if entry is None:
+        return False
+    if is_link_like(entry):
+        raise InstallConflict(f"{label} is a symbolic link or junction")
+    if not stat.S_ISREG(entry.st_mode):
+        raise InstallConflict(f"{label} is not a regular file")
+    return True
+
+
+def assert_regular_managed_file(path: Path, filename: str) -> bool:
+    return assert_regular_path(path, f"Managed agent {filename}")
 
 
 def validate_config_metadata(config: object) -> Optional[dict[str, str]]:
@@ -95,7 +183,11 @@ def validate_config_metadata(config: object) -> Optional[dict[str, str]]:
         raise InstallConflict("OpenCode manifest config must be an object")
     filename = config.get("filename")
     mcp_hash = config.get("mcpEntrySha256")
-    if filename not in {"opencode.json", "opencode.jsonc"} or Path(str(filename)).name != filename:
+    if (
+        filename not in {"opencode.json", "opencode.jsonc"}
+        or not isinstance(filename, str)
+        or Path(filename).name != filename
+    ):
         raise InstallConflict(f"Unsafe OpenCode config filename: {filename!r}")
     if not isinstance(mcp_hash, str) or not SHA256_PATTERN.fullmatch(mcp_hash):
         raise InstallConflict("Invalid OpenCode MCP entry SHA-256")
@@ -138,19 +230,15 @@ def manifest_text(
     ) + "\n"
 
 
-def normalize_target(target_dir: Path) -> Path:
-    return Path(os.path.abspath(str(target_dir.expanduser())))
-
-
 def validate_managed_filename(filename: str, platform: str = "copilot") -> str:
     validate_platform(platform)
-    extension_matches = (
-        filename.endswith(".agent.md")
-        if platform == "copilot" and isinstance(filename, str)
-        else isinstance(filename, str)
-        and filename.endswith(".md")
-        and not filename.endswith(".agent.md")
-    )
+    extension_matches = False
+    if isinstance(filename, str):
+        extension_matches = (
+            filename.endswith(".agent.md")
+            if platform == "copilot"
+            else filename.endswith(".md") and not filename.endswith(".agent.md")
+        )
     if (
         not isinstance(filename, str)
         or not filename
@@ -170,74 +258,6 @@ def managed_path(target_dir: Path, filename: str, platform: str = "copilot") -> 
     if destination.parent != target_dir:
         raise InstallConflict(f"Managed path escapes target directory: {filename}")
     return destination
-
-
-def is_link_like(stat_result: os.stat_result) -> bool:
-    attributes = getattr(stat_result, "st_file_attributes", 0)
-    return stat.S_ISLNK(stat_result.st_mode) or bool(
-        attributes & REPARSE_POINT_ATTRIBUTE
-    )
-
-
-def lstat_or_none(path: Path) -> Optional[os.stat_result]:
-    try:
-        return os.lstat(path)
-    except FileNotFoundError:
-        return None
-
-
-def assert_regular_path(path: Path, label: str) -> bool:
-    entry = lstat_or_none(path)
-    if entry is None:
-        return False
-    if is_link_like(entry):
-        raise InstallConflict(f"{label} is a symbolic link or junction")
-    if not stat.S_ISREG(entry.st_mode):
-        raise InstallConflict(f"{label} is not a regular file")
-    return True
-
-
-def assert_regular_managed_file(path: Path, filename: str) -> bool:
-    return assert_regular_path(path, f"Managed agent {filename}")
-
-
-def validate_path_components(target_dir: Path) -> Path:
-    target = normalize_target(target_dir)
-    parts = target.parts
-    if not parts:
-        raise InstallConflict(f"Invalid target path: {target}")
-
-    current = Path(parts[0])
-    for part in parts[1:]:
-        current = current / part
-        entry = lstat_or_none(current)
-        if entry is None:
-            break
-        if is_link_like(entry):
-            raise InstallConflict(
-                f"Target path component is a symbolic link or junction: {current}"
-            )
-        if current != target and not stat.S_ISDIR(entry.st_mode):
-            raise InstallConflict(f"Target path component is not a directory: {current}")
-    return target
-
-
-def prepare_target(target_dir: Path) -> Path:
-    target = validate_existing_target(target_dir)
-    target.mkdir(parents=True, exist_ok=True)
-    validate_path_components(target)
-    entry = lstat_or_none(target)
-    if entry is None or is_link_like(entry) or not stat.S_ISDIR(entry.st_mode):
-        raise InstallConflict(f"Target must be a real directory: {target}")
-    return target
-
-
-def validate_existing_target(target_dir: Path) -> Path:
-    target = validate_path_components(target_dir)
-    entry = lstat_or_none(target)
-    if entry is not None and not stat.S_ISDIR(entry.st_mode):
-        raise InstallConflict(f"Target must be a directory: {target}")
-    return target
 
 
 def manifest_path(target_dir: Path) -> Path:
@@ -279,16 +299,13 @@ def load_manifest(target_dir: Path, platform: str = "copilot") -> dict[str, obje
     path = manifest_path(target_dir)
     if not assert_regular_path(path, f"Installer manifest {path}"):
         return canonical_manifest({}, platform)
-
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise InstallConflict(f"Cannot read installer manifest: {path}: {exc}") from exc
-
     try:
         if not isinstance(data, dict):
             raise ValueError("manifest root must be an object")
-
         package_matches = data.get("package") == PACKAGE_NAME
         repository_matches = data.get("repository") == REPOSITORY
         if not package_matches and not repository_matches:
@@ -317,7 +334,6 @@ def load_manifest(target_dir: Path, platform: str = "copilot") -> dict[str, obje
         raw_files = data.get("files")
         if not isinstance(raw_files, dict):
             raise ValueError("files must be an object")
-
         files: dict[str, str] = {}
         for filename, expected_hash in raw_files.items():
             validate_managed_filename(filename, platform)
@@ -419,7 +435,6 @@ def commit_staged_install(
                 source.name,
                 f"Managed agent {source.name}",
             )
-
         for destination in obsolete_to_remove:
             filename = destination.name
             assert_regular_managed_file(destination, filename)
@@ -433,7 +448,6 @@ def commit_staged_install(
                     "installed_new": False,
                 }
             )
-
         destination_manifest = manifest_path(target_dir)
         replace_from_stage(
             stage / MANIFEST_NAME,
@@ -481,7 +495,6 @@ def install_agents(
     target_dir = prepare_target(target_dir)
     sources = find_agent_files(source_dir, platform)
     current_names = {source.name for source in sources}
-
     manifest = load_manifest(target_dir, platform)
     previous_files = manifest["files"]
     assert isinstance(previous_files, dict)
@@ -489,7 +502,6 @@ def install_agents(
     conflicts: list[str] = []
     obsolete_to_remove: list[Path] = []
     preserved_obsolete: dict[str, str] = {}
-
     for source in sources:
         target = managed_path(target_dir, source.name, platform)
         if not assert_regular_managed_file(target, source.name):
@@ -500,7 +512,6 @@ def install_agents(
             conflicts.append(f"{source.name} already exists and is not managed by doct-agents")
         elif current_hash != previous_hash:
             conflicts.append(f"{source.name} was modified after installation")
-
     for filename, expected_hash in sorted(previous_files.items()):
         if filename in current_names:
             continue
@@ -511,7 +522,6 @@ def install_agents(
             obsolete_to_remove.append(target)
         else:
             preserved_obsolete[filename] = str(expected_hash)
-
     if conflicts and not force:
         details = "\n- ".join(conflicts)
         raise InstallConflict(
@@ -542,7 +552,6 @@ def get_status(target_dir: Path, platform: str = "copilot") -> InstallStatus:
     manifest = load_manifest(target_dir, platform)
     files = manifest["files"]
     assert isinstance(files, dict)
-
     installed: list[str] = []
     modified: list[str] = []
     missing: list[str] = []
@@ -567,7 +576,6 @@ def uninstall_agents(
     manifest = load_manifest(target_dir, platform)
     files = manifest["files"]
     assert isinstance(files, dict)
-
     preserved: list[str] = []
     remaining: dict[str, str] = {}
     remove_paths: list[Path] = []
@@ -580,10 +588,8 @@ def uninstall_agents(
             remaining[filename] = str(expected_hash)
         else:
             remove_paths.append(target)
-
     for target in remove_paths:
         target.unlink()
-
     path = manifest_path(target_dir)
     if remaining:
         metadata = (
@@ -595,7 +601,6 @@ def uninstall_agents(
     elif lstat_or_none(path):
         assert_regular_path(path, f"Installer manifest {path}")
         path.unlink()
-
     return UninstallResult(len(remove_paths), preserved, target_dir)
 
 
@@ -624,10 +629,9 @@ def parse_source_scalar(value: str):
         return False
     if value.startswith("["):
         try:
-            parsed = ast.literal_eval(value)
+            return ast.literal_eval(value)
         except (SyntaxError, ValueError) as exc:
             raise InstallConflict(f"Invalid source list: {exc}") from exc
-        return parsed
     if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
         try:
             return ast.literal_eval(value)
@@ -681,7 +685,6 @@ def render_opencode_agent(source_text: str, source_filename: str) -> tuple[str, 
     granted: set[str] = set()
     for tool in tools:
         granted.update(SOURCE_TOOL_PERMISSIONS.get(tool, ()))
-
     is_orchestrator = name == "orchestrator"
     mode = "primary" if is_orchestrator else "all" if user_invocable else "subagent"
     lines = [
@@ -758,7 +761,7 @@ def strip_jsonc(text: str) -> str:
             output.extend((" ", " "))
             index += 2
             while index < len(text):
-                if text[index] == "*" and index + 1 < len(text) and text[index + 1] == "/":
+                if text[index : index + 2] == "*/":
                     output.extend((" ", " "))
                     index += 2
                     break
@@ -918,7 +921,7 @@ def find_object_property(
 def line_indent(text: str, position: int) -> str:
     line_start = text.rfind("\n", 0, position) + 1
     prefix = text[line_start:position]
-    return prefix if prefix.isspace() or not prefix else ""
+    return prefix if not prefix.strip() else ""
 
 
 def format_json_value(value: object, property_indent: str) -> str:
@@ -979,7 +982,6 @@ def remove_jsonc_property(
         if end < len(text) and text[end] == "\n":
             end += 1
         return text[:line_start] + text[end:]
-
     start = key_start
     if comma < 0:
         cursor = key_start - 1
@@ -1007,6 +1009,7 @@ def patch_opencode_config(
         raise InstallConflict("OpenCode config mcp must be an object")
     current = mcp.get("doct_playwright") if isinstance(mcp, dict) else None
     current_hash = hash_json_value(current) if current is not None else None
+    desired_hash = hash_json_value(PLAYWRIGHT_MCP)
     if (
         current is not None
         and expected_hash
@@ -1016,7 +1019,6 @@ def patch_opencode_config(
         raise InstallConflict(
             "Managed OpenCode doct_playwright entry was modified after installation"
         )
-    desired_hash = hash_json_value(PLAYWRIGHT_MCP)
     if (
         current is not None
         and not expected_hash
@@ -1105,9 +1107,15 @@ def detect_opencode(
         entry = lstat_or_none(directory)
         if entry is not None and stat.S_ISDIR(entry.st_mode) and not is_link_like(entry):
             return True
-
     names = (
-        ("opencode.exe", "opencode.cmd", "opencode.bat", "opencode2.exe", "opencode2.cmd", "opencode2.bat")
+        (
+            "opencode.exe",
+            "opencode.cmd",
+            "opencode.bat",
+            "opencode2.exe",
+            "opencode2.cmd",
+            "opencode2.bat",
+        )
         if os.name == "nt"
         else ("opencode", "opencode2")
     )
@@ -1121,12 +1129,210 @@ def detect_opencode(
     return False
 
 
+def config_path_from_manifest(target: Path, manifest: dict[str, object]) -> Path:
+    config = manifest.get("config")
+    if isinstance(config, dict) and isinstance(config.get("filename"), str):
+        return normalize_target(target).parent / str(config["filename"])
+    return opencode_config_path(target)
+
+
+def read_regular_text(path: Path, fallback: Optional[str] = None) -> Optional[str]:
+    entry = lstat_or_none(path)
+    if entry is None:
+        return fallback
+    if is_link_like(entry):
+        raise InstallConflict(f"Config is a symbolic link or junction: {path}")
+    if not stat.S_ISREG(entry.st_mode):
+        raise InstallConflict(f"Config is not a regular file: {path}")
+    return path.read_text(encoding="utf-8")
+
+
+def write_regular_text_atomic(path: Path, text: str) -> None:
+    parent = prepare_target(path.parent)
+    current = lstat_or_none(path)
+    if current is not None:
+        if is_link_like(current):
+            raise InstallConflict(f"Config is a symbolic link or junction: {path}")
+        if not stat.S_ISREG(current.st_mode):
+            raise InstallConflict(f"Config is not a regular file: {path}")
+    stage = Path(
+        tempfile.mkdtemp(prefix=f".{path.name}.doct-agents-config-", dir=str(parent))
+    )
+    staged = stage / "next"
+    backup = stage / "previous"
+    staged.write_text(text, encoding="utf-8")
+    moved_original = False
+    preserve_stage = False
+    try:
+        if current is not None:
+            os.replace(path, backup)
+            moved_original = True
+        os.replace(staged, path)
+    except BaseException as exc:
+        try:
+            if lstat_or_none(path):
+                path.unlink()
+            if moved_original and lstat_or_none(backup):
+                os.replace(backup, path)
+        except OSError as rollback_error:
+            preserve_stage = True
+            raise InstallConflict(
+                f"{exc}; config rollback also failed: {rollback_error}; backup at {stage}"
+            ) from exc
+        raise
+    finally:
+        if not preserve_stage:
+            shutil.rmtree(stage, ignore_errors=True)
+
+
+def restore_config(path: Path, previous_text: str, existed: bool) -> None:
+    if existed:
+        write_regular_text_atomic(path, previous_text)
+        return
+    entry = lstat_or_none(path)
+    if entry is not None:
+        if is_link_like(entry):
+            raise InstallConflict(f"Config is a symbolic link or junction: {path}")
+        path.unlink()
+
+
+def install_opencode(
+    source_dir: Path,
+    target_dir: Path,
+    *,
+    force: bool = False,
+) -> tuple[InstallResult, Path]:
+    target = normalize_target(target_dir)
+    previous_manifest = load_manifest(target, "opencode")
+    config_path = config_path_from_manifest(target, previous_manifest)
+    previous_text = read_regular_text(config_path, "{}\n")
+    assert previous_text is not None
+    config_existed = lstat_or_none(config_path) is not None
+    config = previous_manifest.get("config")
+    expected_hash = (
+        str(config.get("mcpEntrySha256"))
+        if isinstance(config, dict) and config.get("mcpEntrySha256")
+        else None
+    )
+    patch = patch_opencode_config(
+        previous_text,
+        expected_hash=expected_hash,
+        force=force,
+    )
+
+    parent = prepare_target(config_path.parent)
+    render_dir = Path(
+        tempfile.mkdtemp(prefix=".doct-agents-opencode-render-", dir=str(parent))
+    )
+    try:
+        render_opencode_agents(source_dir, render_dir)
+        write_regular_text_atomic(config_path, patch.text)
+        try:
+            result = install_agents(
+                render_dir,
+                target,
+                force=force,
+                platform="opencode",
+                manifest_metadata={
+                    "config": {
+                        "filename": config_path.name,
+                        "mcpEntrySha256": patch.mcp_entry_sha256,
+                    }
+                },
+            )
+            return result, config_path
+        except BaseException:
+            restore_config(config_path, previous_text, config_existed)
+            raise
+    finally:
+        shutil.rmtree(render_dir, ignore_errors=True)
+
+
+def get_opencode_status(target_dir: Path) -> OpenCodeStatus:
+    target = normalize_target(target_dir)
+    status = get_status(target, "opencode")
+    manifest = load_manifest(target, "opencode")
+    config = manifest.get("config")
+    if not isinstance(config, dict):
+        return OpenCodeStatus(
+            status.installed,
+            status.modified,
+            status.missing,
+            status.target,
+            "missing",
+            opencode_config_path(target),
+        )
+    config_path = config_path_from_manifest(target, manifest)
+    text = read_regular_text(config_path, None)
+    if text is None:
+        config_status = "missing"
+    else:
+        try:
+            probe = patch_opencode_config(
+                text, expected_hash=str(config["mcpEntrySha256"])
+            )
+            config_status = "missing" if probe.changed else "installed"
+        except InstallConflict as exc:
+            if "modified" in str(exc).lower():
+                config_status = "modified"
+            else:
+                raise
+    return OpenCodeStatus(
+        status.installed,
+        status.modified,
+        status.missing,
+        status.target,
+        config_status,
+        config_path,
+    )
+
+
+def uninstall_opencode(
+    target_dir: Path,
+    *,
+    force: bool = False,
+) -> OpenCodeUninstallResult:
+    target = normalize_target(target_dir)
+    manifest = load_manifest(target, "opencode")
+    config = manifest.get("config")
+    config_path: Optional[Path] = None
+    original_text: Optional[str] = None
+    patch: Optional[OpenCodeConfigPatch] = None
+    config_preserved = False
+    if isinstance(config, dict):
+        config_path = config_path_from_manifest(target, manifest)
+        original_text = read_regular_text(config_path, None)
+        if original_text is not None:
+            try:
+                patch = patch_opencode_config(
+                    original_text,
+                    expected_hash=str(config["mcpEntrySha256"]),
+                    force=force,
+                    remove=True,
+                )
+            except InstallConflict as exc:
+                if not force and "modified" in str(exc).lower():
+                    config_preserved = True
+                else:
+                    raise
+
+    result = uninstall_agents(target, force=force, platform="opencode")
+    if patch is not None and patch.changed and config_path is not None:
+        write_regular_text_atomic(config_path, patch.text)
+    return OpenCodeUninstallResult(
+        result.removed,
+        result.preserved,
+        result.target,
+        config_preserved,
+        config_path,
+    )
+
+
 def safe_extract_archive(archive: zipfile.ZipFile, destination: Path) -> None:
     destination = destination.resolve()
     destination.mkdir(parents=True, exist_ok=True)
     if destination.is_symlink() or not destination.is_dir():
         raise RuntimeError(f"Archive destination must be a real directory: {destination}")
-
     for member in archive.infolist():
         name = member.filename
         pure_path = PurePosixPath(name)
@@ -1139,23 +1345,19 @@ def safe_extract_archive(archive: zipfile.ZipFile, destination: Path) -> None:
             or any(":" in part for part in pure_path.parts)
         ):
             raise RuntimeError(f"unsafe archive member: {name!r}")
-
         mode = (member.external_attr >> 16) & 0o170000
         if mode == stat.S_IFLNK:
             raise RuntimeError(f"archive member is a symbolic link: {name!r}")
-
         target = (destination / Path(*pure_path.parts)).resolve()
         try:
             target.relative_to(destination)
         except ValueError as exc:
             raise RuntimeError(f"unsafe archive member: {name!r}") from exc
-
         current = target.parent
         while current != destination:
             if current.is_symlink():
                 raise RuntimeError(f"archive member crosses a symbolic link: {name!r}")
             current = current.parent
-
     archive.extractall(destination)
 
 
@@ -1171,7 +1373,6 @@ def download_source(repository: str, ref: str, work_dir: Path) -> Path:
             archive_path.write_bytes(response.read())
     except (urllib.error.URLError, TimeoutError) as exc:
         raise RuntimeError(f"Cannot download {archive_url}: {exc}") from exc
-
     with zipfile.ZipFile(archive_path) as archive:
         safe_extract_archive(archive, work_dir / "source")
     candidates = list((work_dir / "source").glob("*/agents"))
@@ -1182,13 +1383,16 @@ def download_source(repository: str, ref: str, work_dir: Path) -> Path:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Manage doct-agents in VS Code's standard agent locations."
+        description="Manage doct-agents for GitHub Copilot and OpenCode."
     )
     parser.add_argument(
         "command",
         choices=("install", "update", "status", "uninstall"),
         nargs="?",
         default="install",
+    )
+    parser.add_argument(
+        "--platform", choices=("copilot", "opencode", "all"), default=None
     )
     parser.add_argument("--scope", choices=("user", "workspace"), default="user")
     parser.add_argument("--workspace", type=Path, default=Path.cwd())
@@ -1200,40 +1404,117 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def selected_platforms(args: argparse.Namespace) -> list[str]:
+    if args.platform == "all":
+        return ["copilot", "opencode"]
+    if args.platform:
+        return [args.platform]
+    if args.target:
+        return ["copilot"]
+    if args.command in {"status", "uninstall"}:
+        return ["copilot"]
+    return (
+        ["copilot", "opencode"]
+        if detect_opencode(workspace=args.workspace)
+        else ["copilot"]
+    )
+
+
+def platform_target(args: argparse.Namespace, platform: str) -> Path:
+    if args.target:
+        return normalize_target(args.target)
+    return default_target(args.scope, args.workspace, platform=platform)
+
+
+def print_status(platform: str, status, prefix: str) -> None:
+    print(f"{prefix}Target: {status.target}")
+    print(f"{prefix}Installed: {len(status.installed)}")
+    print(f"{prefix}Modified: {', '.join(status.modified) if status.modified else 'none'}")
+    print(f"{prefix}Missing: {', '.join(status.missing) if status.missing else 'none'}")
+    if platform == "opencode":
+        print(f"{prefix}Browser MCP config: {status.config}")
+
+
+def run_platform(
+    args: argparse.Namespace,
+    platform: str,
+    source_dir: Optional[Path],
+    multiple: bool,
+) -> int:
+    target = platform_target(args, platform)
+    prefix = f"[{platform}] " if multiple else ""
+    if args.command == "status":
+        status = (
+            get_opencode_status(target)
+            if platform == "opencode"
+            else get_status(target, "copilot")
+        )
+        if not (status.installed or status.modified or status.missing):
+            print(f"{prefix}doct-agents is not installed in {status.target}")
+            return 1
+        print_status(platform, status, prefix)
+        config_bad = platform == "opencode" and status.config in {"modified", "missing"}
+        return 2 if status.modified or status.missing or config_bad else 0
+
+    if args.command == "uninstall":
+        result = (
+            uninstall_opencode(target, force=args.force)
+            if platform == "opencode"
+            else uninstall_agents(target, force=args.force, platform="copilot")
+        )
+        print(f"{prefix}Removed {result.removed} managed agent files from {result.target}")
+        if result.preserved:
+            print(f"{prefix}Preserved modified files: {', '.join(result.preserved)}")
+        config_preserved = bool(
+            platform == "opencode" and getattr(result, "config_preserved", False)
+        )
+        if config_preserved:
+            print(f"{prefix}Preserved modified OpenCode doct_playwright MCP config")
+        return 2 if result.preserved or config_preserved else 0
+
+    if source_dir is None:
+        raise RuntimeError("Agent source is required for install/update")
+    if platform == "opencode":
+        result, config_path = install_opencode(source_dir, target, force=args.force)
+    else:
+        result = install_agents(source_dir, target, force=args.force, platform="copilot")
+        config_path = None
+    verb = "Updated" if args.command == "update" else "Installed"
+    print(f"{prefix}{verb} {result.installed} agents in {result.target}")
+    if config_path is not None:
+        print(f"{prefix}Configured isolated Playwright MCP in {config_path}")
+    return 0
+
+
+def execute(args: argparse.Namespace, source_dir: Optional[Path]) -> int:
+    if args.platform == "all" and args.target:
+        raise InstallConflict("--target cannot be combined with --platform all")
+    platforms = selected_platforms(args)
+    exit_code = 0
+    for platform in platforms:
+        try:
+            exit_code = max(
+                exit_code,
+                run_platform(args, platform, source_dir, len(platforms) > 1),
+            )
+        except (FileNotFoundError, InstallConflict, RuntimeError, OSError) as exc:
+            if len(platforms) == 1:
+                raise
+            print(f"[{platform}] error: {exc}", file=sys.stderr)
+            exit_code = max(exit_code, 1)
+    return exit_code
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     args = build_parser().parse_args(argv)
-    target = args.target or default_target(args.scope, args.workspace)
-
     try:
-        if args.command == "status":
-            status = get_status(target)
-            if not (status.installed or status.modified or status.missing):
-                print(f"doct-agents is not installed in {status.target}")
-                return 1
-            print(f"Target: {status.target}")
-            print(f"Installed: {len(status.installed)}")
-            print(f"Modified: {', '.join(status.modified) if status.modified else 'none'}")
-            print(f"Missing: {', '.join(status.missing) if status.missing else 'none'}")
-            return 2 if status.modified or status.missing else 0
-
-        if args.command == "uninstall":
-            result = uninstall_agents(target, force=args.force)
-            print(f"Removed {result.removed} managed agent files from {result.target}")
-            if result.preserved:
-                print("Preserved modified files: " + ", ".join(result.preserved))
-                return 2
-            return 0
-
-        if args.source_dir:
-            result = install_agents(args.source_dir, target, force=args.force)
-        else:
+        if args.command in {"install", "update"}:
+            if args.source_dir:
+                return execute(args, args.source_dir)
             with tempfile.TemporaryDirectory(prefix="doct-agents-") as temp_dir:
                 source_dir = download_source(args.repository, args.ref, Path(temp_dir))
-                result = install_agents(source_dir, target, force=args.force)
-        verb = "Updated" if args.command == "update" else "Installed"
-        print(f"{verb} {result.installed} agents in {result.target}")
-        print("Reload VS Code, open Copilot Chat, and select orchestrator or cli-executor.")
-        return 0
+                return execute(args, source_dir)
+        return execute(args, None)
     except (FileNotFoundError, InstallConflict, RuntimeError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
