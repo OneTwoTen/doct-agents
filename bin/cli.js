@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { run } from "./doct-agents.js";
+import { run } from "./platform-runner.js";
 
 try {
   process.exitCode = run();
