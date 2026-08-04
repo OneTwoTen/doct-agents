@@ -64,6 +64,17 @@ class SpecWorkspaceContractTest(unittest.TestCase):
         self.assertIn("Not implemented", feature_text)
         self.assertIn("Related specs", feature_text)
 
+    def test_readme_uses_doct_spec_workspace_as_canonical_long_running_state(self) -> None:
+        text = (ROOT / "README.md").read_text(encoding="utf-8")
+
+        self.assertIn(".doct/specs/<feature>/", text)
+        self.assertIn("FEATURE_IMPACT", text)
+        self.assertIn("UPDATE_FEATURE_REGISTRY", text)
+        self.assertNotIn(
+            "Tiếp tục triển khai theo plan docs/superpowers/plans/",
+            text,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
