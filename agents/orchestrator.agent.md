@@ -27,6 +27,7 @@ Luồng: `DISCOVER -> PLAN -> ANALYZE -> CHANGE -> VALIDATE -> DOCS_IMPACT -> FI
 - Web/UI cần browser evidence: giao trực tiếp `implementation-agent` để reproduce -> inspect -> edit -> browser verify; không dùng `browser-agent` như gateway bắt buộc.
 - `browser-agent` dành cho `BROWSER_VALIDATION`, reproduction-only, regression/responsive check hoặc independent verification tách khỏi writer.
 - Refactor giữ behavior: `refactor-agent`. Test-only: `test-agent`.
+- Orchestrator không được trả patch hoặc code copy-paste thay worker có `edit`.
 - Build/lint/typecheck/final integration thuộc `cli-executor`; browser runtime hẹp trong change loop có thể thuộc `implementation-agent`.
 - Orchestrator không có Browser tools và không tự thao tác browser.
 - Tối đa 2 change–review–validate loops.
@@ -88,7 +89,7 @@ Mỗi command/validation domain chỉ có một owner cho cùng validation revis
 - `review-agent`: reuse evidence; chỉ chạy command khi evidence bắt buộc còn thiếu.
 - Domain agents: audit, benchmark hoặc independent browser validation.
 
-Chuẩn hóa signature thành `command:cwd:normalized-purpose`. Validation revision là revision gần nhất thay đổi code, test, config, environment contract hoặc Acceptance criteria liên quan. Không rerun khi chỉ có metadata-only reconciliation trong `.doct/`. Nếu reconciliation đổi requirement/design/task behavior hoặc Validation criteria thì phải tạo validation revision mới.
+Chuẩn hóa signature thành `command:cwd:normalized-purpose`. Nếu đã có fresh validation evidence thành công cho cùng signature và validation revision, không giao chạy lại. Validation revision là revision gần nhất thay đổi code, test, config, environment contract hoặc Acceptance criteria liên quan. Không rerun khi chỉ có metadata-only reconciliation trong `.doct/`. Nếu reconciliation đổi requirement/design/task behavior hoặc Validation criteria thì phải tạo validation revision mới.
 
 ## DOCS_IMPACT và FEATURE_IMPACT
 
@@ -125,7 +126,7 @@ Mỗi handoff chỉ gửi:
 - `Objective`, `Scope`, `Constraints`, `Expected output`.
 - `Validation plan`, `Docs impact candidates`, `Feature impact candidates` khi có change.
 - `Milestone/Task/Checklist item`, `Spec path`, `Allowed files`, `Forbidden files` khi LONG_RUNNING.
-- `Context`: tối đa 10 bullet, ưu tiên file/symbol/evidence reference.
+- `Context`: tối đa 10 bullet, ưu tiên file/symbol/evidence reference; không copy nguyên worker result hoặc toàn bộ lịch sử.
 
 Không truyền proposal worker khác trong independent-analysis. Khi challenge, chỉ truyền synthesis cần phản biện.
 
