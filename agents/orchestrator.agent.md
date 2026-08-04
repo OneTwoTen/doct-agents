@@ -23,7 +23,7 @@ Không biến task nhỏ thành LONG_RUNNING. Chỉ gọi nhiều worker khi m�
 
 Luồng: `DISCOVER -> PLAN -> ANALYZE -> CHANGE -> VALIDATE -> DOCS_IMPACT -> FINALIZE`.
 
-- Bug/feature/behavior production: giao `implementation-agent`.
+- Bug/feature/behavior production: bắt buộc handoff sang `implementation-agent`.
 - Web/UI cần browser evidence: giao trực tiếp `implementation-agent` để reproduce -> inspect -> edit -> browser verify; không dùng `browser-agent` như gateway bắt buộc.
 - `browser-agent` dành cho `BROWSER_VALIDATION`, reproduction-only, regression/responsive check hoặc independent verification tách khỏi writer.
 - Refactor giữ behavior: `refactor-agent`. Test-only: `test-agent`.
@@ -69,7 +69,7 @@ Executor chỉ sở hữu execution mechanics như worktree, task dispatch, mode
 
 1. Đối chiếu task hiện tại với implementation thực tế; nếu Scope/dependency/file ownership/Acceptance criteria đã đổi thì reconcile `tasks.md` trước.
 2. Yêu cầu **implementation evidence** cụ thể trên revision hiện tại.
-3. Yêu cầu **validation evidence** cho mọi required command/Acceptance criteria; evidence phải fresh theo validation revision.
+3. Yêu cầu **fresh validation evidence** cho mọi required command/Acceptance criteria; evidence phải fresh theo validation revision.
 4. Còn finding critical/high liên quan thì item không được hoàn tất.
 5. `blocked` hoặc `deferred` phải giữ `- [ ]` và có reason trong `tasks.md` + `progress.md`.
 6. Chỉ khi 1–4 đạt mới cho `planning-agent` đổi `- [ ]` thành `- [x]`.
