@@ -4,17 +4,7 @@
 
 doct-agents cung cấp custom agents và orchestration contracts để phân tích, triển khai, review, validate và document thay đổi kỹ thuật theo least-privilege routing.
 
-## Current capabilities
-
-- Orchestrator-only subagent routing.
-- FAST_FIX cho thay đổi cục bộ một change-validation cycle.
-- LONG_RUNNING cho roadmap/milestone/checkpoint dài hơi.
-- Requirement extraction và architecture proposal/challenge.
-- Dedicated implementation, review, test, security, dependency, performance, browser và docs workers.
-- Validation ownership để tránh chạy lặp cùng command trên cùng revision.
-- Documentation impact lifecycle.
-- Executor-neutral spec workspace tại `.doct/specs/<feature>/` cho LONG_RUNNING.
-- Feature registry tại `.doct/features/` để tổng hợp current-state capability.
+Current capability/status không duplicate trong file này. Xem `.doct/features/index.md` để lấy project capability catalog hiện tại.
 
 ## Architecture map
 
@@ -36,9 +26,9 @@ Orchestrator sở hữu lifecycle, routing, review budget, validation evidence v
 
 ```text
 .doct/project.md
-    ↓
+    ↓ architecture / knowledge model
 .doct/features/index.md
-    ↓
+    ↓ current capability catalog
 .doct/features/<feature>.md
     ↑ related specs
 .doct/specs/<feature>/
@@ -48,17 +38,23 @@ Orchestrator sở hữu lifecycle, routing, review budget, validation evidence v
 └── progress.md
 ```
 
-Specs lưu change intent/history; feature records lưu current-state truth.
+Specs lưu change intent/history; feature records lưu current-state truth. `.doct/project.md` chỉ giữ project purpose, architecture và knowledge-model conventions tương đối ổn định để tránh drift với feature catalog.
 
-## In progress
+## Canonical ownership
 
-- Chuẩn hóa executor adapters ngoài native workflow là capability riêng và chỉ được ghi stable khi có implementation + validation evidence.
+- `.doct/specs/<feature>/requirements.md`: WHAT.
+- `.doct/specs/<feature>/design.md`: HOW.
+- `.doct/specs/<feature>/tasks.md`: WORK.
+- `.doct/specs/<feature>/progress.md`: STATE.
+- `.doct/features/index.md`: danh mục capability/status hiện tại.
+- `.doct/features/<feature>.md`: current-state behavior của capability quan trọng.
 
 ## Known limitations
 
 - Feature registry là Markdown contract, chưa có generated machine-readable manifest.
 - Historical plans dưới `docs/superpowers/` vẫn được giữ làm lịch sử; workflow LONG_RUNNING mới không dùng chúng làm canonical state.
+- Executor adapter cụ thể phải có implementation + validation riêng trước khi được ghi stable trong feature catalog.
 
 ## Catalog
 
-Xem `.doct/features/index.md`.
+Xem `.doct/features/index.md` để biết project hiện có những capability nào, status và related spec tương ứng.
