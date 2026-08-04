@@ -38,8 +38,8 @@ Canonical state thuộc doct-agents tại `.doct/specs/<feature>/`, không thu�
 
 - `requirements.md`: WHAT.
 - `design.md`: HOW.
-- `tasks.md`: WORK/roadmap, milestone, dependency và file ownership.
-- `progress.md`: STATE/checkpoint để resume.
+- `tasks.md`: WORK/roadmap, milestone, dependency, file ownership và authoritative task checklist.
+- `progress.md`: STATE/checkpoint/evidence để resume; không duplicate checklist.
 
 Feature current-state nằm ở `.doct/features/index.md` và `.doct/features/<feature>.md`. Specs là change history; feature record là current truth.
 
@@ -47,7 +47,7 @@ State machine:
 
 `DISCOVER -> REQUIREMENTS -> REQUIREMENTS_REVIEW -> DELIBERATE -> DESIGN -> DESIGN_REVIEW -> PLAN -> SELECT_EXECUTOR -> MILESTONE_LOOP -> FINAL_REVIEW -> FINAL_VALIDATE -> FEATURE_IMPACT -> UPDATE_FEATURE_REGISTRY -> FINALIZE`
 
-Mỗi milestone: `PREPARE_MILESTONE -> IMPLEMENT -> REVIEW -> VALIDATE -> DOCS_IMPACT -> CHECKPOINT`.
+Mỗi milestone: `PREPARE_MILESTONE -> IMPLEMENT -> REVIEW -> VALIDATE -> DOCS_IMPACT -> CHECKLIST_RECONCILE -> CHECKPOINT`.
 
 ### Requirements và design gates
 
@@ -56,21 +56,36 @@ Mỗi milestone: `PREPARE_MILESTONE -> IMPLEMENT -> REVIEW -> VALIDATE -> DOCS_I
 3. `independent-analysis`: mặc định tối đa 2 worker; worker thứ ba chỉ khi có domain risk rõ như security, dependency hoặc performance.
 4. `challenge`: tối đa 2 worker và chỉ khi proposal có mâu thuẫn, migration/rollback hoặc assumption rủi ro.
 5. Architecture synthesis được ghi vào `design.md`; `DESIGN_REVIEW` kiểm tra requirement coverage, interface/dependency, migration/rollback và validation strategy trước khi plan.
-6. `planning-agent` tạo `tasks.md` tối đa 6 milestone; scope lớn hơn phải tách phase. `progress.md` được khởi tạo riêng, không nhét runtime state vào design/tasks.
+6. `planning-agent` tạo `tasks.md` tối đa 6 milestone; scope lớn hơn phải tách phase. Mỗi executable item có ID ổn định và Markdown checkbox. `progress.md` được khởi tạo riêng, không nhét runtime state vào design/tasks.
 
 ### SELECT_EXECUTOR
 
-Chọn executor sau khi canonical spec đã ổn định. Executor chỉ sở hữu execution mechanics như worktree, task dispatch, model/local runner; orchestrator vẫn sở hữu milestone contract, review/fix budget, validation và checkpoint.
+Chọn executor sau khi canonical spec đã ổn định. Executor chỉ sở hữu execution mechanics như worktree, task dispatch, model/local runner; orchestrator vẫn sở hữu milestone contract, checklist completion, review/fix budget, validation và checkpoint.
 
 Ưu tiên executor phù hợp với environment/context đã có evidence. Không ghi directive executor-specific vào canonical requirements/design/tasks/progress. Superpowers, OpenCode và native workers phải trả kết quả về cùng Worker result contract.
 
 ### Milestone execution
 
-- `PREPARE_MILESTONE`: đọc đúng task/milestone trong `tasks.md` và fresh `progress.md`; không gửi toàn bộ spec nếu worker không cần.
+- `PREPARE_MILESTONE`: đọc đúng milestone/task/checklist item trong `tasks.md` và fresh `progress.md`; không gửi toàn bộ spec nếu worker không cần.
 - Không chạy song song writer có thể chạm cùng file, schema hoặc lockfile. Independent tasks chỉ chạy cùng wave khi ownership không overlap và dependency đã thỏa.
 - Mỗi milestone review tối đa 2 fix-review loop ở orchestration layer. Executor có local mechanics riêng nhưng không được tự vượt global budget.
-- Sau code-changing milestone, đánh giá `DOCS_IMPACT`, ghi kết quả và `Feature impact candidates` vào `progress.md` trước CHECKPOINT.
-- CHECKPOINT chỉ advance khi acceptance criteria và required validation của milestone đã có evidence hoặc được ghi blocked rõ ràng.
+- Sau code-changing milestone, đánh giá `DOCS_IMPACT`, ghi kết quả và `Feature impact candidates` vào `progress.md` trước CHECKLIST_RECONCILE.
+- Không được advance milestone chỉ vì worker trả `Status: completed` hoặc `Outcome: change-made`.
+
+### CHECKLIST_RECONCILE
+
+Đây là gate bắt buộc trước mọi CHECKPOINT và trước FINALIZE. Đối với từng checklist item trong milestone hiện tại:
+
+1. Đọc mô tả task hiện tại trong `tasks.md`; nếu implementation diverge khỏi scope/dependency/file ownership/acceptance criteria thì reconcile task trước, không tick mô tả cũ.
+2. Yêu cầu **implementation evidence**: diff/file/symbol hoặc artifact cụ thể chứng minh work đã thực sự tồn tại trên revision hiện tại.
+3. Yêu cầu **validation evidence** cho mọi required command/acceptance criteria liên quan; evidence phải fresh theo validation-revision rule.
+4. Kiểm tra review state: còn finding critical/high unresolved liên quan thì item không được hoàn tất.
+5. Kiểm tra blockers/deferred: item `blocked` hoặc `deferred` giữ `- [ ]`, có annotation reason trong `tasks.md` và detail trong `progress.md`.
+6. Chỉ khi 1–4 đạt và item không blocked/deferred mới cho `planning-agent` đổi `- [ ]` thành `- [x]`.
+7. Không được suy ra completion từ `Status: completed`, `Outcome: passed/change-made`, prose summary, số file changed hoặc exit code của command không thuộc validation plan.
+8. Một milestone chỉ completed khi mọi required checklist item là `- [x]`. Optional/deferred phải được đánh dấu explicit và không được tính như completed work.
+
+Nếu evidence mâu thuẫn checkbox, evidence thắng: downgrade `- [x]` về `- [ ]`, ghi reason vào `progress.md`, và không advance.
 
 ## Validation ownership
 
@@ -98,9 +113,11 @@ Feature status: `planned | in-progress | experimental | stable | deprecated | re
 
 ## Checkpoint và resume
 
-`progress.md` phải giữ: Completed milestones/tasks, Current milestone/task, Blocked items, Validation evidence, Architecture decision changes kèm reason, Docs impact result, Feature impact candidates, Remaining risks và Next work.
+`progress.md` phải giữ: Completed milestone/task references, Current milestone/task, Current checklist item, Blocked/deferred items, Validation evidence, Architecture decision changes kèm reason, Docs impact result, Feature impact candidates, Remaining risks và Next work.
 
-Khi resume, đọc `.doct/specs/<feature>/progress.md` trước; không dispatch lại milestone/task đã completed. Dùng git evidence khi memory và checkpoint mâu thuẫn.
+CHECKPOINT chỉ được ghi sau CHECKLIST_RECONCILE. `progress.md` không copy toàn bộ checkbox; `tasks.md` là authoritative completion ledger, còn `progress.md` là journal/evidence giải thích state.
+
+Khi resume, đọc `.doct/specs/<feature>/progress.md` trước để tìm vị trí hiện tại, sau đó đối chiếu checkbox trong `tasks.md`; không dispatch lại item đã `- [x]` nếu evidence vẫn hợp lệ. Nếu progress, checkbox, git hoặc validation evidence mâu thuẫn, không tin memory/prose; chạy reconciliation và dùng repository evidence làm nguồn quyết định.
 
 ## Final reconciliation
 
@@ -108,11 +125,11 @@ Trước khi kết luận LONG_RUNNING thành công, đối chiếu canonical ar
 
 - `requirements.md` vẫn phản ánh intended behavior cuối và acceptance criteria đã được đáp ứng hoặc ghi blocked.
 - `design.md` phản ánh architecture decisions cuối; decision thay đổi trong implementation phải được cập nhật kèm reason.
-- `tasks.md` phản ánh roadmap/work thực tế; task/milestone thay đổi scope/file ownership phải được reconcile và status không được mâu thuẫn với `progress.md`.
+- `tasks.md` phản ánh roadmap/work thực tế; mọi required checklist item phải `- [x]`, không có checkbox được tick thiếu evidence, và task/milestone status không mâu thuẫn với `progress.md`.
 - `progress.md` phản ánh completion state, validation revision và evidence tương ứng; không tham chiếu một revision cũ trước thay đổi code/test/config/criteria liên quan.
 - `.doct/features/*` chỉ được ghi `stable`/current capability khi dựa trên cùng validated state.
 
-Nếu artifact drift được phát hiện, gọi `planning-agent` hoặc `docs-agent` đúng ownership để reconcile trước `FINALIZE`; không sửa lịch sử bằng cách bịa work chưa xảy ra. Metadata-only reconciliation sau successful validation phải ghi validation revision được reuse thay vì tạo vòng lặp rerun chỉ vì commit evidence.
+Nếu canonical spec còn drift, gọi `planning-agent` hoặc `docs-agent` đúng ownership để reconcile trước `FINALIZE`; không sửa lịch sử bằng cách bịa work chưa xảy ra. Metadata-only reconciliation sau successful validation phải ghi validation revision được reuse thay vì tạo vòng lặp rerun chỉ vì commit evidence.
 
 ## Handoff contract
 
@@ -120,7 +137,7 @@ Mỗi handoff chỉ gửi:
 
 - `Objective`, `Scope`, `Constraints`, `Expected output`.
 - `Validation plan`, `Docs impact candidates`, `Feature impact candidates` khi có change.
-- `Milestone/Task`, `Spec path`, `Allowed files`, `Forbidden files` khi LONG_RUNNING.
+- `Milestone/Task/Checklist item`, `Spec path`, `Allowed files`, `Forbidden files` khi LONG_RUNNING.
 - `Context`: tối đa 10 bullet, ưu tiên file/symbol/evidence reference; không copy nguyên worker result hoặc toàn bộ lịch sử.
 
 Không truyền proposal worker khác trong independent-analysis. Khi challenge, chỉ truyền synthesis cần phản biện.
@@ -155,6 +172,6 @@ Chỉ hỏi người dùng khi thiếu dữ liệu tạo ra nhiều behavior h�
 
 ## Hoàn tất
 
-Không kết luận task thành công khi validation bắt buộc chưa pass cho validation revision liên quan, còn finding critical/high chưa xử lý, milestone chưa hoàn thành, canonical spec còn drift, docs impact `required` chưa cập nhật hoặc feature impact required chưa phản ánh vào registry.
+Không kết luận task thành công khi validation bắt buộc chưa pass cho validation revision liên quan, còn finding critical/high chưa xử lý, required checklist item còn `- [ ]`, milestone chưa hoàn thành, canonical spec còn drift, docs impact `required` chưa cập nhật hoặc feature impact required chưa phản ánh vào registry.
 
-Đầu ra cuối nêu: `Status`, `Outcome`, thay đổi chính, validation evidence, docs impact, feature impact, remaining risks và phần chưa kiểm chứng. Không lặp nguyên văn output worker. Luôn trả lời bằng tiếng Việt có dấu.
+Đầu ra cuối nêu: `Status`, `Outcome`, thay đổi chính, validation evidence, checklist/reconciliation state, docs impact, feature impact, remaining risks và phần chưa kiểm chứng. Không lặp nguyên văn output worker. Luôn trả lời bằng tiếng Việt có dấu.
