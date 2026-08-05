@@ -219,12 +219,17 @@ DISCOVER
 → FINALIZE
 ```
 
-### Spec workspace
+### Thư mục spec
 
-LONG_RUNNING không lưu canonical state trong plan của executor. `planning-agent` tạo workspace được commit cùng project:
+`planning-agent` chọn nơi lưu spec theo cấu trúc project. Với spec mới:
+
+- project đã có `docs/` → `docs/specs/<feature>/`;
+- project chưa có `docs/` → `.doct/specs/<feature>/`.
+
+Nếu đang tiếp tục spec đã tồn tại, agent giữ nguyên `Spec path` cũ và không tự di chuyển giữa hai vị trí.
 
 ```text
-.doct/specs/<feature>/
+<spec-path>/
 ├── requirements.md   # WHAT
 ├── design.md         # HOW
 ├── tasks.md          # WORK
@@ -233,7 +238,7 @@ LONG_RUNNING không lưu canonical state trong plan của executor. `planning-ag
 
 - `requirements.md`: mục tiêu, ngoài phạm vi, requirements, constraints và Acceptance criteria.
 - `design.md`: Architecture decisions, interfaces, migration/rollback, risks và Validation strategy.
-- `tasks.md`: roadmap/milestone, dependency, allowed/forbidden files và **authoritative execution checklist**.
+- `tasks.md`: roadmap/milestone, dependency, allowed/forbidden files và checklist chính.
 - `progress.md`: current state, validation evidence, blockers/deferred và next work; không sao chép checklist.
 
 Một roadmap có tối đa 6 milestone. Scope lớn hơn phải tách thành phase độc lập.
@@ -249,7 +254,7 @@ Mỗi executable task trong `tasks.md` có ID ổn định như `M2-T1` và dùn
 - Nếu evidence mất hiệu lực, orchestrator phải downgrade `[x]` về `[ ]`.
 - Milestone chỉ completed khi mọi required checklist item đã `[x]`.
 
-`CHECKPOINT` chỉ được ghi sau `CHECKLIST_RECONCILE`. Khi resume, đọc `progress.md` để biết vị trí hiện tại rồi đối chiếu authoritative checkbox state trong `tasks.md`; repository evidence thắng memory/prose nếu có mâu thuẫn.
+`CHECKPOINT` chỉ được ghi sau `CHECKLIST_RECONCILE`. Khi resume, đọc `progress.md` tại `Spec path` để biết vị trí hiện tại rồi đối chiếu checkbox trong `tasks.md`; repository evidence thắng memory/prose nếu có mâu thuẫn.
 
 ### Feature catalog
 
@@ -271,13 +276,13 @@ Các worker không gọi trực tiếp nhau. Orchestrator làm trung gian để 
 
 1. `independent-analysis`: mặc định tối đa 2 agent; chỉ gọi agent thứ ba khi có domain risk rõ như security, dependency hoặc performance.
 2. `challenge`: tối đa 2 agent và chỉ chạy khi proposal có mâu thuẫn, migration/rollback hoặc assumption rủi ro.
-3. `synthesis`: requirements/design/tasks được cập nhật theo đúng source-of-truth tương ứng.
+3. `synthesis`: requirements/design/tasks được cập nhật vào đúng file chịu trách nhiệm.
 
 `architecture-agent` có mode `proposal` và `challenge`.
 
 ### Ranh giới executor
 
-Orchestrator chọn executor sau khi canonical spec ổn định. Superpowers, OpenCode hoặc native execution chỉ sở hữu mechanics như worktree, task dispatch và local runner; doct-agents vẫn sở hữu milestone contract, checklist completion, review budget, validation evidence và checkpoint.
+Orchestrator chọn executor sau khi spec ổn định. Superpowers, OpenCode hoặc native execution chỉ xử lý mechanics như worktree, task dispatch và local runner; doct-agents vẫn quản lý milestone, checklist completion, review budget, validation evidence và checkpoint.
 
 ### Kết quả worker và validation ownership
 
@@ -293,7 +298,7 @@ Orchestrator chọn executor sau khi canonical spec ổn định. Superpowers, O
 | `performance-agent` | Benchmark và profiling |
 | `browser-agent` | Independent browser validation, reproduction-only và user-flow evidence tách khỏi writer |
 
-Orchestrator chuẩn hóa command signature và reuse fresh successful evidence cho cùng validation revision. Metadata-only reconciliation trong `.doct/` không tự làm evidence stale.
+Orchestrator chuẩn hóa command signature và reuse fresh successful evidence cho cùng validation revision. Thay đổi chỉ để đồng bộ metadata/evidence trong spec không tự làm validation cũ stale.
 
 Validator kiểm tra Outcome vocabulary, quyền `edit + execute` và prompt-size budget. `implementation-agent` dùng `execute` chỉ cho dev-server/runtime loop hẹp; final pipeline vẫn thuộc `cli-executor`.
 
@@ -304,7 +309,7 @@ Orchestrator tự tiếp tục giữa các milestone và chỉ hỏi user khi th
 ### Tiếp tục ở chat mới
 
 ```text
-Tiếp tục triển khai LONG_RUNNING tại .doct/specs/<feature>/. Đọc progress.md trước, đối chiếu checklist trong tasks.md, không làm lại item đã [x] nếu evidence vẫn hợp lệ và tiếp tục từ item đầu tiên chưa hoàn thành.
+Tiếp tục triển khai LONG_RUNNING tại <spec-path>/. Đọc progress.md trước, đối chiếu checklist trong tasks.md, không làm lại item đã [x] nếu evidence vẫn hợp lệ và tiếp tục từ item đầu tiên chưa hoàn thành.
 ```
 
 ## Documentation impact lifecycle
@@ -359,16 +364,16 @@ Mở http://localhost:3000, kiểm tra luồng đăng nhập, chụp screenshot 
 ### Triển khai dài hơi
 
 ```text
-Triển khai tính năng này theo LONG_RUNNING. Tạo .doct/specs/<feature>/, dùng checklist có evidence gate, chọn executor phù hợp và thực hiện tối đa 6 milestone. Sau mỗi milestone review, validate, đánh giá docs/feature impact, reconcile checklist rồi checkpoint. Chỉ hỏi tôi khi bị blocked theo autonomous blocker policy.
+Triển khai tính năng này theo LONG_RUNNING. Nếu project có docs/ thì tạo docs/specs/<feature>/, nếu chưa có docs/ thì tạo .doct/specs/<feature>/. Dùng checklist có evidence gate, chọn executor phù hợp và thực hiện tối đa 6 milestone. Sau mỗi milestone review, validate, đánh giá docs/feature impact, đối chiếu checklist rồi checkpoint. Chỉ hỏi tôi khi bị blocked theo autonomous blocker policy.
 ```
 
 ## Agent chính
 
 | Agent | Vai trò |
 | --- | --- |
-| `orchestrator` | Route FAST_FIX/LONG_RUNNING, quản lý lifecycle, budget, checklist reconciliation và checkpoint; không sở hữu Browser tools |
+| `orchestrator` | Route FAST_FIX/LONG_RUNNING, quản lý lifecycle, budget, đối chiếu checklist và checkpoint; không sở hữu Browser tools |
 | `architecture-agent` | Đề xuất hoặc phản biện kiến trúc |
-| `planning-agent` | Tạo/duy trì requirements, design, tasks/checklist và progress |
+| `planning-agent` | Chọn Spec path và tạo/duy trì requirements, design, tasks/checklist, progress |
 | `implementation-agent` | Sửa production code; với web/UI có thể tự reproduce và browser-verify |
 | `cli-executor` | Chạy terminal/CLI và sở hữu final build/lint/typecheck/integration validation |
 | `review-agent` | Review quality, milestone và final cross-milestone |
@@ -452,11 +457,11 @@ Nếu workflow vẫn dùng token, repository cần secret `NPM_TOKEN`. Sau khi T
 
 ```text
 .
-├── .doct/                        # Project/spec/feature knowledge cho LONG_RUNNING
+├── .doct/                        # Project/feature knowledge và fallback specs cho LONG_RUNNING
 ├── agents/                       # Agent source và nội dung npm package
 ├── bin/cli.js                    # npm executable
 ├── bin/doct-agents.js            # CLI implementation và installer logic
-├── docs/superpowers/             # Historical specs/plans/checkpoints
+├── docs/                         # Project docs; LONG_RUNNING specs mới nằm ở docs/specs/ khi thư mục này tồn tại
 ├── install.py                    # Installer Python fallback
 ├── package.json                  # npm package metadata
 ├── scripts/                      # Validator/release/smoke scripts
