@@ -56,25 +56,24 @@ class AgentResultContractTest(unittest.TestCase):
         self.assertTrue({"Mode", "Docs checked", "Docs changed", "Docs unchanged"} <= fields)
         self.assertNotIn("Docs impact candidates", fields)
 
-    def test_orchestrator_declares_same_common_envelope(self) -> None:
+    def test_orchestrator_declares_same_common_result_fields(self) -> None:
         text = (AGENTS / "orchestrator.agent.md").read_text(encoding="utf-8")
-        fields = declared_fields(text, "Worker result contract")
+        fields = declared_fields(text, "Kết quả worker")
 
         self.assertEqual(COMMON_ENVELOPE_FIELDS, fields)
         self.assertIn(
-            "field domain-specific chỉ xuất hiện khi worker-specific",
-            section(text, "Worker result contract"),
+            "field riêng của từng agent chỉ xuất hiện khi",
+            section(text, "Kết quả worker"),
         )
 
-    def test_orchestrator_handoff_separates_input_and_result_contracts(self) -> None:
+    def test_orchestrator_handoff_separates_input_and_result_fields(self) -> None:
         text = (AGENTS / "orchestrator.agent.md").read_text(encoding="utf-8")
-        handoff = section(text, "Handoff contract")
+        handoff = section(text, "Thông tin khi giao việc")
 
-        self.assertIn("Input contract", handoff)
+        self.assertIn("Input bắt buộc", handoff)
         self.assertIn("precondition/mode input", handoff)
         self.assertIn("Kết quả bắt buộc", handoff)
-        self.assertIn("result contract", handoff)
-        self.assertIn("không suy output field thành input", handoff)
+        self.assertIn("không biến field output thành input", handoff)
         self.assertIn("docs-agent` mode `author", handoff)
         self.assertIn("không gửi `Docs impact candidates`", handoff)
 
