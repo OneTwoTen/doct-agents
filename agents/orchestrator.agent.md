@@ -138,10 +138,11 @@ Common envelope cho mọi worker result:
 - `Status`: `completed | needs-info | blocked | failed`.
 - `Outcome`: `passed | change-made | defect-found | validation-failed | no-change`.
 - `Summary`: Summary tối đa 120 từ.
+- `Scope`: input/files/symbols/artifacts/commands thực sự worker đã xử lý; không bịa phần chưa đọc/chưa chạy.
 - `Validation`: evidence/checks thực sự có và unresolved.
 - `Next`: `none | handoff | ask-user`, target và reason.
 
-`Scope` và các field domain-specific chỉ xuất hiện khi worker-specific `Kết quả bắt buộc` khai báo chúng; orchestrator không tự ghép field từ worker khác hoặc từ impact lifecycle. Không biến `Status: completed` thành task success nếu `Outcome` là `defect-found` hoặc `validation-failed`.
+Các field domain-specific chỉ xuất hiện khi worker-specific `Kết quả bắt buộc` khai báo chúng; orchestrator không tự ghép field từ worker khác hoặc từ impact lifecycle. Không biến `Status: completed` thành task success nếu `Outcome` là `defect-found` hoặc `validation-failed`.
 
 ## Autonomous blocker policy và budget
 
