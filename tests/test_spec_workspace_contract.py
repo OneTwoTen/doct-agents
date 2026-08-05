@@ -67,6 +67,8 @@ class SpecWorkspaceContractTest(unittest.TestCase):
         self.assertIn("feature-update", text)
         self.assertIn(".doct/features/index.md", text)
         self.assertIn(".doct/features/<feature>.md", text)
+        self.assertIn("docs/specs/<feature>/", text)
+        self.assertIn(".doct/specs/<feature>/", text)
         self.assertIn("current-state", text)
         self.assertIn("không thay thế", text)
 
