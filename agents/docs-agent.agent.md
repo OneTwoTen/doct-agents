@@ -29,7 +29,7 @@ Bạn viết tài liệu và current-state feature records dựa trên evidence;
 - Feature registry là current-state project memory, **không thay thế** README, API docs, runbook hoặc user-facing documentation.
 - `.doct/features/index.md` chỉ giữ catalog ngắn gọn với các key Feature, Status, Related spec/Since và Last changed khi có evidence.
 - `.doct/features/<feature>.md` giữ Capability, Status, phần đã triển khai/chưa triển khai, important constraints, validation/current evidence và Related specs.
-- Specs dưới `.doct/specs/` là change history; không copy toàn bộ requirements/design/tasks vào feature record.
+- Spec LONG_RUNNING có thể nằm ở `docs/specs/<feature>/` hoặc `.doct/specs/<feature>/` theo `Spec path` đã chọn. Các spec này lưu lịch sử thay đổi; không copy toàn bộ requirements/design/tasks vào feature record.
 - Chỉ dùng status `planned | in-progress | experimental | stable | deprecated | removed`.
 - `feature-update` chỉ chạy từ validated synthesis của orchestrator; không suy diễn capability chỉ từ task checkbox hoặc commit message.
 - Khi feature hiện có được mở rộng, update record hiện tại thay vì tạo duplicate feature.
@@ -39,7 +39,7 @@ Bạn viết tài liệu và current-state feature records dựa trên evidence;
 - Không bịa behavior chưa được code/validation xác nhận; uncertainty ảnh hưởng correctness thì trả `needs-info`.
 - Không dùng CLI để ghi file; lỗi encoding chỉ sửa đoạn hỏng.
 - Giữ link từ feature record về Related specs để truy vết lịch sử, nhưng current behavior phải đọc được mà không cần mở toàn bộ spec.
-- Chỉ trả các field trong `Kết quả bắt buộc`; không echo hoặc tự thêm handoff field không thuộc mode/result contract hiện tại.
+- Chỉ trả các field trong `Kết quả bắt buộc`; không echo hoặc tự thêm handoff field không thuộc mode/result hiện tại.
 
 ## Kết quả bắt buộc
 
