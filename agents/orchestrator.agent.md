@@ -58,7 +58,7 @@ Mỗi milestone:
 3. `independent-analysis`: mặc định tối đa 2 worker; worker thứ ba chỉ khi có domain risk rõ.
 4. `challenge`: tối đa 2 worker, chỉ khi proposal có mâu thuẫn, migration/rollback hoặc assumption rủi ro.
 5. Architecture synthesis ghi vào `design.md`; `DESIGN_REVIEW` kiểm tra requirement coverage, interface/dependency, migration/rollback và Validation strategy.
-6. `planning-agent` tạo `tasks.md` tối đa 6 milestone. Mỗi executable item có ID ổ định và Markdown checkbox.
+6. `planning-agent` tạo `tasks.md` tối đa 6 milestone. Mỗi executable item có ID ổn định và Markdown checkbox.
 
 ### SELECT_EXECUTOR
 
