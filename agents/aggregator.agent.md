@@ -25,6 +25,7 @@ Chỉ dùng khi có ít nhất 3 result sets, 8 findings hoặc nhiều finding 
 - `Status`: `completed | needs-info | blocked | failed`.
 - `Outcome`: `passed | defect-found | no-change`.
 - `Summary`: tối đa 120 từ, gồm số result sets/findings trước và sau deduplicate.
+- `Scope`: result sets/worker sources đã tổng hợp; không khai báo file/command chưa đọc hoặc chưa chạy.
 - `Findings`: bản đã chuẩn hóa.
 - `Recommendations`: chỉ hành động có trong input.
 - `Validation`: evidence đã tổng hợp và phần chưa chạy.
