@@ -31,34 +31,41 @@
 - [x] **Step 2: Chạy test để xác nhận RED** vì agent hiện tại chỉ hardcode `.doct/specs/<feature>/`.
 - [x] **Step 3: Giữ test tối thiểu**, chỉ kiểm behavior/path/language cần thay đổi.
 
-### Task 2: Cập nhật planning-agent và orchestrator
+### Task 2: Cập nhật các agent liên quan
 
 **Files:**
 - Modify: `agents/planning-agent.agent.md`
 - Modify: `agents/orchestrator.agent.md`
+- Modify: `agents/docs-agent.agent.md`
+- Modify: `tests/test_agent_result_contracts.py`
 
 **Interfaces:**
 - Consumes: regression test từ Task 1.
-- Produces: cùng một quy tắc chọn `Spec path` và prose đơn giản hơn.
+- Produces: cùng một quy tắc chọn `Spec path`, docs-agent hiểu cả hai vị trí spec và prose đơn giản hơn.
 
 - [x] **Step 1: Sửa planning-agent** để kiểm tra cấu trúc docs trước khi chọn path; đổi heading và diễn đạt checklist sang tiếng Việt trực tiếp.
 - [x] **Step 2: Sửa orchestrator** để LONG_RUNNING dùng spec path do planning-agent chọn, không giả định `.doct/specs/` cố định.
-- [x] **Step 3: Giữ nguyên lifecycle/evidence semantics** của checklist, checkpoint và validation revision.
-- [x] **Step 4: Chạy regression test và xác nhận GREEN**.
+- [x] **Step 3: Sửa docs-agent** để feature update chấp nhận Related specs từ cả `docs/specs/` và `.doct/specs/`.
+- [x] **Step 4: Đơn giản hóa heading/result wording** nhưng giữ nguyên machine-readable lifecycle/status fields.
+- [x] **Step 5: Chạy regression test và xác nhận GREEN**.
 
-### Task 3: Đồng bộ README và regression wording
+### Task 3: Đồng bộ README và current-state docs
 
 **Files:**
 - Modify: `README.md`
+- Modify: `.doct/project.md`
+- Modify: `.doct/features/index.md`
+- Modify: `.doct/features/long-running.md`
 - Modify: `tests/test_spec_workspace_contract.py`
 
 **Interfaces:**
 - Consumes: behavior mới từ Task 2.
-- Produces: tài liệu người dùng và test cùng mô tả một quy tắc.
+- Produces: README, project knowledge và feature registry cùng mô tả một quy tắc.
 
 - [x] **Step 1: Cập nhật phần LONG_RUNNING/Spec workspace** trong README với hai vị trí lưu và ví dụ resume dùng `<spec-path>` thay vì `.doct/specs/...` cố định.
-- [x] **Step 2: Loại bỏ các assertion bắt buộc từ ngữ `authoritative` nếu không cần cho behavior**.
-- [x] **Step 3: Chạy test liên quan và full validation khả dụng**.
+- [x] **Step 2: Cập nhật project/feature current-state docs** để không còn mô tả `.doct/specs/` là vị trí duy nhất.
+- [x] **Step 3: Loại bỏ các assertion bắt buộc từ ngữ `authoritative` nếu không cần cho behavior**.
+- [x] **Step 4: Chạy test liên quan và full validation khả dụng**.
 
 ### Task 4: Review và hoàn tất branch
 
