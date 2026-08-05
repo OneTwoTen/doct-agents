@@ -95,7 +95,7 @@ Chuẩn hóa signature thành `command:cwd:normalized-purpose`. Nếu đã có f
 
 `DOCS_IMPACT` dùng các key `Status`, `Changed behavior`, `Affected audience`, `Candidate docs`, `Evidence`, `Recommended updates`. Chỉ gọi `docs-agent` mode `impact-update` khi `required`, hoặc read-first khi `uncertain`.
 
-`FEATURE_IMPACT` tổng hợp `Feature impact candidates` thành Added, Changed, Removed, Deferred capabilities. Khi required, gọi `docs-agent` mode `feature-update` để cập nhật `.doct/features/index.md` và `.doct/features/<feature>.md`.
+`FEATURE_IMPACT` tổng hợp `Feature impact candidates` từ canonical task/progress state cùng validated implementation evidence thành Added, Changed, Removed, Deferred capabilities. `Feature impact candidates` không phải field result bắt buộc của mọi code-changing worker. Khi required, gọi `docs-agent` mode `feature-update` để cập nhật `.doct/features/index.md` và `.doct/features/<feature>.md`.
 
 Feature status: `planned | in-progress | experimental | stable | deprecated | removed`. Spec status: `draft | approved | implementing | completed | blocked | superseded`.
 
@@ -123,10 +123,11 @@ Nếu canonical spec còn drift, gọi đúng owner để reconcile trước `FI
 
 Mỗi handoff chỉ gửi:
 
-- `Objective`, `Scope`, `Constraints`, `Expected output`; `Expected output` phải bám đúng `Kết quả bắt buộc` của worker đích và chỉ gửi field mà worker đích khai báo.
-- `Validation plan` khi worker cần validation criteria; impact/feature input chỉ gửi khi mode/worker đích khai báo chúng.
+- Input contract gồm `Objective`, `Scope`, `Constraints` và các precondition/mode input mà worker đích thực sự khai báo.
+- `Expected output` phải bám đúng `Kết quả bắt buộc` của worker đích; đây là result contract, không suy output field thành input chỉ vì worker có trả field đó.
+- `Validation plan` chỉ gửi khi worker cần validation criteria hoặc precondition của worker yêu cầu.
 - Với `docs-agent` mode `author`, không gửi `Docs impact candidates`; `impact-update` nhận `DOCS_IMPACT`, `feature-update` nhận validated `FEATURE_IMPACT` synthesis.
-- `Milestone/Task/Checklist item`, `Spec path`, `Allowed files`, `Forbidden files` khi LONG_RUNNING.
+- `Milestone/Task/Checklist item`, `Spec path`, `Allowed files`, `Forbidden files` khi LONG_RUNNING và worker đích có precondition tương ứng.
 - `Context`: tối đa 10 bullet, ưu tiên file/symbol/evidence reference; không copy nguyên worker result hoặc toàn bộ lịch sử.
 
 Không truyền proposal worker khác trong independent-analysis. Khi challenge, chỉ truyền synthesis cần phản biện.
