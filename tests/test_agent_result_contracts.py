@@ -66,13 +66,14 @@ class AgentResultContractTest(unittest.TestCase):
             section(text, "Worker result contract"),
         )
 
-    def test_orchestrator_handoff_uses_target_worker_result_contract(self) -> None:
+    def test_orchestrator_handoff_separates_input_and_result_contracts(self) -> None:
         text = (AGENTS / "orchestrator.agent.md").read_text(encoding="utf-8")
         handoff = section(text, "Handoff contract")
 
+        self.assertIn("Input contract", handoff)
+        self.assertIn("precondition/mode input", handoff)
         self.assertIn("Kết quả bắt buộc", handoff)
-        self.assertIn("chỉ gửi field mà worker đích khai báo", handoff)
-        self.assertIn("input contract", handoff)
+        self.assertIn("result contract", handoff)
         self.assertIn("không suy output field thành input", handoff)
         self.assertIn("docs-agent` mode `author", handoff)
         self.assertIn("không gửi `Docs impact candidates`", handoff)
