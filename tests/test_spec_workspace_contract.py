@@ -10,15 +10,19 @@ AGENTS = ROOT / "agents"
 
 
 class SpecWorkspaceContractTest(unittest.TestCase):
-    def test_planning_agent_owns_executor_neutral_spec_workspace(self) -> None:
+    def test_planning_agent_selects_spec_workspace_from_project_docs(self) -> None:
         text = (AGENTS / "planning-agent.agent.md").read_text(encoding="utf-8")
 
+        self.assertIn("docs/specs/<feature>/", text)
         self.assertIn(".doct/specs/<feature>/", text)
+        self.assertIn("docs/", text)
         for artifact in ("requirements.md", "design.md", "tasks.md", "progress.md"):
             self.assertIn(artifact, text)
         for role in ("WHAT", "HOW", "WORK", "STATE"):
             self.assertIn(role, text)
         self.assertNotIn("docs/superpowers/plans/YYYY-MM-DD-<feature>-implementation.md", text)
+        self.assertNotIn("## Hợp đồng không gian đặc tả", text)
+        self.assertNotIn("## Hợp đồng checklist", text)
 
     def test_long_running_has_review_executor_feature_and_checklist_lifecycle(self) -> None:
         text = (AGENTS / "orchestrator.agent.md").read_text(encoding="utf-8")
@@ -32,20 +36,20 @@ class SpecWorkspaceContractTest(unittest.TestCase):
             "UPDATE_FEATURE_REGISTRY",
         ):
             self.assertIn(stage, text)
+        self.assertIn("docs/specs/<feature>/", text)
         self.assertIn(".doct/specs/<feature>/", text)
         self.assertIn("progress.md", text)
         self.assertIn("Feature impact candidates", text)
-        self.assertIn("## Final reconciliation", text)
-        self.assertIn("canonical spec còn drift", text)
+        self.assertIn("## Đối chiếu cuối", text)
         self.assertIn("validation revision", text)
-        self.assertIn("Metadata-only reconciliation", text)
         self.assertIn("Status: completed", text)
         self.assertIn("downgrade `- [x]` về `- [ ]`", text)
+        self.assertNotIn("canonical spec còn drift", text)
+        self.assertNotIn("authoritative task checklist", text)
 
-    def test_planning_agent_defines_strict_authoritative_checklist(self) -> None:
+    def test_planning_agent_defines_evidence_backed_checklist(self) -> None:
         text = (AGENTS / "planning-agent.agent.md").read_text(encoding="utf-8")
 
-        self.assertIn("authoritative", text)
         self.assertIn("- [ ]", text)
         self.assertIn("- [x]", text)
         self.assertIn("implementation evidence", text)
@@ -54,6 +58,8 @@ class SpecWorkspaceContractTest(unittest.TestCase):
         self.assertIn("deferred", text)
         self.assertIn("Status: completed", text)
         self.assertIn("không sao chép toàn bộ checklist", text)
+        self.assertNotIn("authoritative", text.lower())
+        self.assertNotIn("sổ cái", text.lower())
 
     def test_docs_agent_separates_public_docs_from_feature_registry(self) -> None:
         text = (AGENTS / "docs-agent.agent.md").read_text(encoding="utf-8")
@@ -61,6 +67,8 @@ class SpecWorkspaceContractTest(unittest.TestCase):
         self.assertIn("feature-update", text)
         self.assertIn(".doct/features/index.md", text)
         self.assertIn(".doct/features/<feature>.md", text)
+        self.assertIn("docs/specs/<feature>/", text)
+        self.assertIn(".doct/specs/<feature>/", text)
         self.assertIn("current-state", text)
         self.assertIn("không thay thế", text)
 
@@ -76,6 +84,8 @@ class SpecWorkspaceContractTest(unittest.TestCase):
         project_text = project.read_text(encoding="utf-8")
         self.assertNotIn("## Current capabilities", project_text)
         self.assertIn(".doct/features/index.md", project_text)
+        self.assertIn("docs/specs/<feature>/", project_text)
+        self.assertIn(".doct/specs/<feature>/", project_text)
 
         index_text = index.read_text(encoding="utf-8")
         self.assertIn("LONG_RUNNING", index_text)
@@ -86,8 +96,10 @@ class SpecWorkspaceContractTest(unittest.TestCase):
         self.assertIn("## Đã triển khai", feature_text)
         self.assertIn("## Chưa triển khai", feature_text)
         self.assertIn("## Related specs", feature_text)
+        self.assertIn("docs/specs/<feature>/", feature_text)
+        self.assertIn(".doct/specs/<feature>/", feature_text)
 
-    def test_tasks_is_authoritative_checklist_and_progress_is_journal(self) -> None:
+    def test_tasks_is_completion_checklist_and_progress_is_journal(self) -> None:
         spec = ROOT / ".doct" / "specs" / "doct-spec-workspace"
         tasks = (spec / "tasks.md").read_text(encoding="utf-8")
         progress = (spec / "progress.md").read_text(encoding="utf-8")
@@ -98,14 +110,14 @@ class SpecWorkspaceContractTest(unittest.TestCase):
         self.assertIsNotNone(progress_status)
         self.assertEqual(task_status.group(1), progress_status.group(1))
         self.assertIn(task_status.group(1), {"implementing", "completed"})
-        self.assertIn("authoritative completion ledger", tasks)
         self.assertRegex(tasks, r"- \[[ x]\] `M1-T1`")
         self.assertIn("Current checklist item", progress)
         self.assertNotRegex(progress, re.compile(r"^- \[[ x]\] `M\d+-T\d+`", re.MULTILINE))
 
-    def test_readme_uses_doct_workspace_and_preserves_browser_loop(self) -> None:
+    def test_readme_describes_flexible_spec_workspace_and_preserves_browser_loop(self) -> None:
         text = (ROOT / "README.md").read_text(encoding="utf-8")
 
+        self.assertIn("docs/specs/<feature>/", text)
         self.assertIn(".doct/specs/<feature>/", text)
         self.assertIn("CHECKLIST_RECONCILE", text)
         self.assertIn("FEATURE_IMPACT", text)
