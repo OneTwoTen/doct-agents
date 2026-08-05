@@ -6,7 +6,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 AGENTS = ROOT / "agents"
-COMMON_RESULT_FIELDS = {"Status", "Outcome", "Summary", "Scope", "Validation", "Next"}
+COMMON_ENVELOPE_FIELDS = {"Status", "Outcome", "Summary", "Validation", "Next"}
+DOCS_REQUIRED_FIELDS = COMMON_ENVELOPE_FIELDS | {"Scope"}
 
 
 def section(text: str, heading: str) -> str:
@@ -20,18 +21,29 @@ def section(text: str, heading: str) -> str:
     return match.group("body")
 
 
-def declared_result_fields(path: Path) -> set[str]:
-    body = section(path.read_text(encoding="utf-8"), "Kết quả bắt buộc")
+def declared_fields(text: str, heading: str) -> set[str]:
+    body = section(text, heading)
     return set(re.findall(r"^- `([^`]+)`\s*:", body, re.MULTILINE))
 
 
+def declared_result_fields(path: Path) -> set[str]:
+    return declared_fields(path.read_text(encoding="utf-8"), "Kết quả bắt buộc")
+
+
 class AgentResultContractTest(unittest.TestCase):
-    def test_docs_agent_author_contract_has_common_core_and_explicit_docs_fields(self) -> None:
+    def test_docs_agent_author_contract_has_required_and_explicit_docs_fields(self) -> None:
         fields = declared_result_fields(AGENTS / "docs-agent.agent.md")
 
-        self.assertTrue(COMMON_RESULT_FIELDS <= fields)
+        self.assertTrue(DOCS_REQUIRED_FIELDS <= fields)
         self.assertTrue({"Mode", "Docs checked", "Docs changed", "Docs unchanged"} <= fields)
         self.assertNotIn("Docs impact candidates", fields)
+
+    def test_orchestrator_common_envelope_excludes_worker_specific_scope(self) -> None:
+        text = (AGENTS / "orchestrator.agent.md").read_text(encoding="utf-8")
+        fields = declared_fields(text, "Worker result contract")
+
+        self.assertEqual(COMMON_ENVELOPE_FIELDS, fields)
+        self.assertIn("`Scope` và các field domain-specific", section(text, "Worker result contract"))
 
     def test_orchestrator_handoff_uses_target_worker_result_contract(self) -> None:
         text = (AGENTS / "orchestrator.agent.md").read_text(encoding="utf-8")
