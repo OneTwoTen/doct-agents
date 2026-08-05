@@ -72,6 +72,8 @@ class AgentResultContractTest(unittest.TestCase):
 
         self.assertIn("Kết quả bắt buộc", handoff)
         self.assertIn("chỉ gửi field mà worker đích khai báo", handoff)
+        self.assertIn("input contract", handoff)
+        self.assertIn("không suy output field thành input", handoff)
         self.assertIn("docs-agent` mode `author", handoff)
         self.assertIn("không gửi `Docs impact candidates`", handoff)
 
