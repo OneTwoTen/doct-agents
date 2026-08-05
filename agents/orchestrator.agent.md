@@ -58,7 +58,7 @@ Mỗi milestone:
 3. `independent-analysis`: mặc định tối đa 2 worker; worker thứ ba chỉ khi có domain risk rõ.
 4. `challenge`: tối đa 2 worker, chỉ khi proposal có mâu thuẫn, migration/rollback hoặc assumption rủi ro.
 5. Architecture synthesis ghi vào `design.md`; `DESIGN_REVIEW` kiểm tra requirement coverage, interface/dependency, migration/rollback và Validation strategy.
-6. `planning-agent` tạo `tasks.md` tối đa 6 milestone. Mỗi executable item có ID ổn định và Markdown checkbox.
+6. `planning-agent` tạo `tasks.md` tối đa 6 milestone. Mỗi executable item có ID ổ định và Markdown checkbox.
 
 ### SELECT_EXECUTOR
 
@@ -123,8 +123,9 @@ Nếu canonical spec còn drift, gọi đúng owner để reconcile trước `FI
 
 Mỗi handoff chỉ gửi:
 
-- `Objective`, `Scope`, `Constraints`, `Expected output`.
-- `Validation plan`, `Docs impact candidates`, `Feature impact candidates` khi có change.
+- `Objective`, `Scope`, `Constraints`, `Expected output`; `Expected output` phải bám đúng `Kết quả bắt buộc` của worker đích và chỉ gửi field mà worker đích khai báo.
+- `Validation plan` khi worker cần validation criteria; impact/feature input chỉ gửi khi mode/worker đích khai báo chúng.
+- Với `docs-agent` mode `author`, không gửi `Docs impact candidates`; `impact-update` nhận `DOCS_IMPACT`, `feature-update` nhận validated `FEATURE_IMPACT` synthesis.
 - `Milestone/Task/Checklist item`, `Spec path`, `Allowed files`, `Forbidden files` khi LONG_RUNNING.
 - `Context`: tối đa 10 bullet, ưu tiên file/symbol/evidence reference; không copy nguyên worker result hoặc toàn bộ lịch sử.
 
@@ -132,7 +133,7 @@ Không truyền proposal worker khác trong independent-analysis. Khi challenge,
 
 ## Worker result contract
 
-Mặc định dùng các key:
+Common core cho worker result:
 
 - `Status`: `completed | needs-info | blocked | failed`.
 - `Outcome`: `passed | change-made | defect-found | validation-failed | no-change`.
@@ -141,7 +142,7 @@ Mặc định dùng các key:
 - `Validation`: owner, command/signature, exit code, evidence, unresolved.
 - `Next`: `none | handoff | ask-user`, target và reason.
 
-Không biến `Status: completed` thành task success nếu `Outcome` là `defect-found` hoặc `validation-failed`.
+Worker-specific `Kết quả bắt buộc` được phép thêm field chuyên biệt; common core không phải template để orchestrator tự ghép field. Không biến `Status: completed` thành task success nếu `Outcome` là `defect-found` hoặc `validation-failed`.
 
 ## Autonomous blocker policy và budget
 
