@@ -25,11 +25,11 @@
 
 **Interfaces:**
 - Consumes: nội dung `agents/planning-agent.agent.md`, `agents/orchestrator.agent.md`, `README.md`.
-- Produces: contract test yêu cầu cả `docs/specs/<feature>/` và `.doct/specs/<feature>/`, cùng quy tắc ưu tiên `docs/`.
+- Produces: regression test yêu cầu cả `docs/specs/<feature>/` và `.doct/specs/<feature>/`, cùng quy tắc ưu tiên `docs/`.
 
-- [ ] **Step 1: Viết test thất bại** yêu cầu planning-agent/orchestrator/README mô tả `docs/` tồn tại → `docs/specs/<feature>/`, nếu không → `.doct/specs/<feature>/`, và không còn heading `Hợp đồng không gian đặc tả`/`Hợp đồng checklist`.
-- [ ] **Step 2: Chạy test để xác nhận RED** vì agent hiện tại chỉ hardcode `.doct/specs/<feature>/`.
-- [ ] **Step 3: Giữ test tối thiểu**, chỉ kiểm behavior/path/language cần thay đổi.
+- [x] **Step 1: Viết test thất bại** yêu cầu planning-agent/orchestrator/README mô tả `docs/` tồn tại → `docs/specs/<feature>/`, nếu không → `.doct/specs/<feature>/`, và không còn heading `Hợp đồng không gian đặc tả`/`Hợp đồng checklist`.
+- [x] **Step 2: Chạy test để xác nhận RED** vì agent hiện tại chỉ hardcode `.doct/specs/<feature>/`.
+- [x] **Step 3: Giữ test tối thiểu**, chỉ kiểm behavior/path/language cần thay đổi.
 
 ### Task 2: Cập nhật planning-agent và orchestrator
 
@@ -38,13 +38,13 @@
 - Modify: `agents/orchestrator.agent.md`
 
 **Interfaces:**
-- Consumes: contract test từ Task 1.
+- Consumes: regression test từ Task 1.
 - Produces: cùng một quy tắc chọn `Spec path` và prose đơn giản hơn.
 
-- [ ] **Step 1: Sửa planning-agent** để kiểm tra cấu trúc docs trước khi chọn path; đổi heading và diễn đạt checklist sang tiếng Việt trực tiếp.
-- [ ] **Step 2: Sửa orchestrator** để LONG_RUNNING dùng spec path do planning-agent chọn, không giả định `.doct/specs/` cố định.
-- [ ] **Step 3: Giữ nguyên lifecycle/evidence semantics** của checklist, checkpoint và validation revision.
-- [ ] **Step 4: Chạy regression test và xác nhận GREEN**.
+- [x] **Step 1: Sửa planning-agent** để kiểm tra cấu trúc docs trước khi chọn path; đổi heading và diễn đạt checklist sang tiếng Việt trực tiếp.
+- [x] **Step 2: Sửa orchestrator** để LONG_RUNNING dùng spec path do planning-agent chọn, không giả định `.doct/specs/` cố định.
+- [x] **Step 3: Giữ nguyên lifecycle/evidence semantics** của checklist, checkpoint và validation revision.
+- [x] **Step 4: Chạy regression test và xác nhận GREEN**.
 
 ### Task 3: Đồng bộ README và regression wording
 
@@ -56,9 +56,9 @@
 - Consumes: behavior mới từ Task 2.
 - Produces: tài liệu người dùng và test cùng mô tả một quy tắc.
 
-- [ ] **Step 1: Cập nhật phần LONG_RUNNING/Spec workspace** trong README với hai vị trí lưu và ví dụ resume dùng `<spec-path>` thay vì `.doct/specs/...` cố định.
-- [ ] **Step 2: Loại bỏ các assertion bắt buộc từ ngữ `authoritative` nếu không cần cho behavior**.
-- [ ] **Step 3: Chạy test liên quan và full validation khả dụng**.
+- [x] **Step 1: Cập nhật phần LONG_RUNNING/Spec workspace** trong README với hai vị trí lưu và ví dụ resume dùng `<spec-path>` thay vì `.doct/specs/...` cố định.
+- [x] **Step 2: Loại bỏ các assertion bắt buộc từ ngữ `authoritative` nếu không cần cho behavior**.
+- [x] **Step 3: Chạy test liên quan và full validation khả dụng**.
 
 ### Task 4: Review và hoàn tất branch
 
@@ -69,6 +69,12 @@
 - Consumes: toàn bộ thay đổi ở Task 1-3.
 - Produces: branch/PR có diff hẹp và evidence validation.
 
-- [ ] **Step 1: So sánh diff với `main`** và kiểm không đổi behavior ngoài scope.
-- [ ] **Step 2: Chạy validation fresh**.
-- [ ] **Step 3: Tạo PR** nêu rõ path-selection rule, language cleanup và validation evidence.
+- [x] **Step 1: So sánh diff với `main`** và kiểm không đổi behavior ngoài scope.
+- [x] **Step 2: Chạy validation fresh**.
+- [x] **Step 3: Tạo PR** nêu rõ path-selection rule, language cleanup và validation evidence.
+
+## Validation evidence
+
+- RED: GitHub Actions run `30970915324` fail đúng các regression mới trước implementation; Ubuntu current báo 5 failure liên quan flexible path/language/current-state docs.
+- GREEN behavior revision: `9e9d7f641c62ec9448b7c28c074fa2aad9e988ed` pass full `npm run check` trên GitHub Actions run `30971295108` ở Ubuntu current, Ubuntu minimum và Windows current.
+- Các commit sau behavior revision chỉ cập nhật feature/plan metadata.
