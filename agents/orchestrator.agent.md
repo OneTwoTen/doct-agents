@@ -95,7 +95,7 @@ Chuẩn hóa signature thành `command:cwd:normalized-purpose`. Nếu đã có f
 
 `DOCS_IMPACT` dùng các key `Status`, `Changed behavior`, `Affected audience`, `Candidate docs`, `Evidence`, `Recommended updates`. Chỉ gọi `docs-agent` mode `impact-update` khi `required`, hoặc read-first khi `uncertain`.
 
-`FEATURE_IMPACT` tổng hợp `Feature impact candidates` thành Added, Changed, Removed, Deferred capabilities. Khi required, gọi `docs-agent` mode `feature-update` để cập nhật `.doct/features/index.md` và `.doct/features/<feature>.md`.
+`FEATURE_IMPACT` tổng hợp `Feature impact candidates` từ canonical task/progress state cùng validated implementation evidence thành Added, Changed, Removed, Deferred capabilities. `Feature impact candidates` không phải field result bắt buộc của mọi code-changing worker. Khi required, gọi `docs-agent` mode `feature-update` để cập nhật `.doct/features/index.md` và `.doct/features/<feature>.md`.
 
 Feature status: `planned | in-progress | experimental | stable | deprecated | removed`. Spec status: `draft | approved | implementing | completed | blocked | superseded`.
 
@@ -123,25 +123,27 @@ Nếu canonical spec còn drift, gọi đúng owner để reconcile trước `FI
 
 Mỗi handoff chỉ gửi:
 
-- `Objective`, `Scope`, `Constraints`, `Expected output`.
-- `Validation plan`, `Docs impact candidates`, `Feature impact candidates` khi có change.
-- `Milestone/Task/Checklist item`, `Spec path`, `Allowed files`, `Forbidden files` khi LONG_RUNNING.
+- Input contract gồm `Objective`, `Scope`, `Constraints` và các precondition/mode input mà worker đích thực sự khai báo.
+- `Expected output` phải bám đúng `Kết quả bắt buộc` của worker đích; đây là result contract, không suy output field thành input chỉ vì worker có trả field đó.
+- `Validation plan` chỉ gửi khi worker cần validation criteria hoặc precondition của worker yêu cầu.
+- Với `docs-agent` mode `author`, không gửi `Docs impact candidates`; `impact-update` nhận `DOCS_IMPACT`, `feature-update` nhận validated `FEATURE_IMPACT` synthesis.
+- `Milestone/Task/Checklist item`, `Spec path`, `Allowed files`, `Forbidden files` khi LONG_RUNNING và worker đích có precondition tương ứng.
 - `Context`: tối đa 10 bullet, ưu tiên file/symbol/evidence reference; không copy nguyên worker result hoặc toàn bộ lịch sử.
 
 Không truyền proposal worker khác trong independent-analysis. Khi challenge, chỉ truyền synthesis cần phản biện.
 
 ## Worker result contract
 
-Mặc định dùng các key:
+Common envelope cho mọi worker result:
 
 - `Status`: `completed | needs-info | blocked | failed`.
 - `Outcome`: `passed | change-made | defect-found | validation-failed | no-change`.
 - `Summary`: Summary tối đa 120 từ.
-- `Scope`: files read/changed và commands thực sự đã chạy.
-- `Validation`: owner, command/signature, exit code, evidence, unresolved.
+- `Scope`: input/files/symbols/artifacts/commands thực sự worker đã xử lý; không bịa phần chưa đọc/chưa chạy.
+- `Validation`: evidence/checks thực sự có và unresolved.
 - `Next`: `none | handoff | ask-user`, target và reason.
 
-Không biến `Status: completed` thành task success nếu `Outcome` là `defect-found` hoặc `validation-failed`.
+Các field domain-specific chỉ xuất hiện khi worker-specific `Kết quả bắt buộc` khai báo chúng; orchestrator không tự ghép field từ worker khác hoặc từ impact lifecycle. Không biến `Status: completed` thành task success nếu `Outcome` là `defect-found` hoặc `validation-failed`.
 
 ## Autonomous blocker policy và budget
 

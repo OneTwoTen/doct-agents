@@ -42,8 +42,10 @@ Với LONG_RUNNING, output phải đủ để orchestrator thực hiện `REQUIR
 - `Status`: `completed | needs-info | blocked | failed`.
 - `Outcome`: `passed | no-change`.
 - `Summary`: tối đa 120 từ.
+- `Scope`: prompt/context và repository files/symbols thực sự đã đọc; không khai báo file chưa kiểm tra.
 - `Goal`, `Non-goals`, `Requirements`, `Constraints`, `Assumptions`, `Open questions`.
 - `Acceptance criteria`, `Dependency candidates`, `Milestone candidates`, `Scope candidates`.
 - `Requirement review candidates`: ambiguity/conflict/unverifiable criteria cần review.
 - `Long-running signal`: `yes | no` với evidence.
+- `Validation`: evidence coverage cho requirement/dependency candidates và phần còn unresolved/chưa xác minh.
 - `Next`: `none | handoff | ask-user`, target và reason.
