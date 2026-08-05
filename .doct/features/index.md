@@ -5,9 +5,9 @@
 | Orchestrator-only routing | stable | historical | 2026-07-30 |
 | FAST_FIX workflow | stable | historical | 2026-07-30 |
 | Browser-driven implementation loop | stable | historical/main | 2026-08-04 |
-| LONG_RUNNING workflow | in-progress | `.doct/specs/doct-spec-workspace/` | 2026-08-05 |
+| LONG_RUNNING workflow | stable | `.doct/specs/doct-spec-workspace/` | 2026-08-05 |
 | Documentation impact lifecycle | stable | historical | 2026-07-30 |
-| Executor-neutral spec workspace | in-progress | `.doct/specs/doct-spec-workspace/` | 2026-08-05 |
+| Executor-neutral spec workspace | stable | `.doct/specs/doct-spec-workspace/` | 2026-08-05 |
 | Feature registry | stable | `.doct/specs/doct-spec-workspace/` | 2026-08-04 |
 | Evidence-backed task checklist | stable | `.doct/specs/doct-spec-workspace/` | 2026-08-04 |
 | Validation ownership | stable | historical | 2026-07-31 |
