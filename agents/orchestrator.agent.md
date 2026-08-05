@@ -133,16 +133,15 @@ Không truyền proposal worker khác trong independent-analysis. Khi challenge,
 
 ## Worker result contract
 
-Common core cho worker result:
+Common envelope cho mọi worker result:
 
 - `Status`: `completed | needs-info | blocked | failed`.
 - `Outcome`: `passed | change-made | defect-found | validation-failed | no-change`.
 - `Summary`: Summary tối đa 120 từ.
-- `Scope`: files read/changed và commands thực sự đã chạy.
-- `Validation`: owner, command/signature, exit code, evidence, unresolved.
+- `Validation`: evidence/checks thực sự có và unresolved.
 - `Next`: `none | handoff | ask-user`, target và reason.
 
-Worker-specific `Kết quả bắt buộc` được phép thêm field chuyên biệt; common core không phải template để orchestrator tự ghép field. Không biến `Status: completed` thành task success nếu `Outcome` là `defect-found` hoặc `validation-failed`.
+`Scope` và các field domain-specific chỉ xuất hiện khi worker-specific `Kết quả bắt buộc` khai báo chúng; orchestrator không tự ghép field từ worker khác hoặc từ impact lifecycle. Không biến `Status: completed` thành task success nếu `Outcome` là `defect-found` hoặc `validation-failed`.
 
 ## Autonomous blocker policy và budget
 
