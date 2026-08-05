@@ -1,6 +1,6 @@
 # LONG_RUNNING
 
-Status: in-progress
+Status: stable
 
 ## Capability
 
@@ -46,7 +46,7 @@ LONG_RUNNING điều phối yêu cầu nhiều phase/module bằng requirements 
 
 ## Validation
 
-Thay đổi chọn `Spec path` linh hoạt và đơn giản hóa ngôn ngữ đang được validate trên PR hiện tại. Chỉ chuyển lại `Status: stable` sau khi full repository check pass trên revision chứa behavior này.
+Behavior revision `9e9d7f641c62ec9448b7c28c074fa2aad9e988ed` đã pass GitHub Actions run `30971295108` trên Ubuntu current, Ubuntu minimum và Windows current. Mỗi lane hoàn thành full `npm run check`, gồm regression cho flexible `Spec path`, agent result fields, validator, package dry-run và smoke test. Các commit sau revision này chỉ cập nhật feature/plan metadata và có thể reuse evidence theo validation-revision rule.
 
 ## Related specs
 
