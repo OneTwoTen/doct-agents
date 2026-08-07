@@ -26,11 +26,14 @@ FAST_FIX guarded: `DISCOVER -> IMPLEMENT -> optional TEST/REVIEW/DOMAIN -> VALID
 
 Direct là mặc định khi expected behavior và scope rõ, không có migration/rollback, compatibility concern, dependency-selection, security, concurrency hoặc data-integrity risk. Guarded chỉ thêm worker khi task vẫn bounded nhưng evidence cho thấy cần test mới, independent review hoặc domain validation. Nếu discovery thấy nhiều phase phụ thuộc, migration/rollback, compatibility contract, cross-module coordination đáng kể, architecture decision chưa rõ hoặc validation không thể hoàn tất trong bounded loop thì chuyển sang `LONG_RUNNING`.
 
+- FAST_FIX không gọi `planning-agent`, không tạo spec/roadmap; planning chỉ bắt đầu sau khi task chuyển sang `LONG_RUNNING`.
 - Bug/feature/behavior production: bắt buộc handoff sang `implementation-agent`.
 - Web/UI cần browser evidence: giao trực tiếp `implementation-agent` để reproduce -> inspect -> edit -> browser verify; không dùng `browser-agent` như gateway bắt buộc.
+- `browser-agent` dành cho `BROWSER_VALIDATION`, reproduction-only, regression/responsive check hoặc independent verification tách khỏi writer.
+- Refactor giữ behavior: `refactor-agent`. Test-only: `test-agent`.
 - Trong FAST_FIX mặc định không gọi `review-agent`; chỉ dùng khi risk/evidence cần independent review.
 - Trong FAST_FIX chỉ gọi `test-agent` khi cần thêm hoặc sửa test; test đã có thuộc validation owner phù hợp.
-- Trong FAST_FIX chỉ gọi `docs-agent` khi docs impact là `required`; `DOCS_IMPACT` mặc định là đánh giá nhẹ tại orchestrator.
+- Trong FAST_FIX chỉ gọi `docs-agent` khi docs impact là `required`; nếu chưa rõ thì orchestrator read/search trước. Khi cần docs-agent, handoff đó dùng guarded budget nhưng không tạo lifecycle stage riêng.
 - Build/lint/typecheck/final integration thuộc `cli-executor`; không chạy lại fresh validation evidence cùng signature/revision.
 - Orchestrator không được trả patch hoặc code copy-paste thay worker có `edit`, không có Browser tools và không tự thao tác browser.
 - FAST_FIX direct: tối đa 2 worker. FAST_FIX guarded: tối đa 3 worker; worker thứ tư chỉ khi có domain risk rõ. FAST_FIX mặc định 1 worker tại một thời điểm; chỉ song song khi scope thực sự độc lập.
@@ -103,7 +106,7 @@ Chuẩn hóa signature thành `command:cwd:normalized-purpose`. Nếu đã có f
 
 ## DOCS_IMPACT và FEATURE_IMPACT
 
-`DOCS_IMPACT` dùng các key `Status`, `Changed behavior`, `Affected audience`, `Candidate docs`, `Evidence`, `Recommended updates`. Chỉ gọi `docs-agent` mode `impact-update` khi `required`, hoặc read-first khi `uncertain`.
+`DOCS_IMPACT` dùng các key `Status`, `Changed behavior`, `Affected audience`, `Candidate docs`, `Evidence`, `Recommended updates`. Với FAST_FIX, orchestrator tự read/search khi `uncertain` và chỉ gọi `docs-agent` mode `impact-update` khi `required`. Với LONG_RUNNING hoặc workflow tài liệu, có thể dùng `docs-agent` read-first khi uncertainty không thể giải quyết từ context hiện có.
 
 `FEATURE_IMPACT` tổng hợp `Feature impact candidates` từ task/progress state cùng validated implementation evidence thành Added, Changed, Removed, Deferred capabilities. `Feature impact candidates` không phải field result bắt buộc của mọi code-changing worker. Khi required, gọi `docs-agent` mode `feature-update` để cập nhật `.doct/features/index.md` và `.doct/features/<feature>.md`.
 
