@@ -163,26 +163,45 @@ Các worker khác mặc định được orchestrator gọi, không cần chọn
 
 ## Workflow task ngắn: FAST_FIX
 
-`FAST_FIX` dùng khi phạm vi cục bộ, expected behavior rõ và có thể hoàn thành an toàn trong một vòng sửa–review–validate.
+`FAST_FIX` dùng khi expected behavior rõ, phạm vi bounded và có thể hoàn thành an toàn trong một change–validate loop. FAST_FIX có hai execution path bên trong, không tạo thêm workflow `SMALL/MEDIUM/LARGE`.
+
+Mặc định dùng `direct` cho thay đổi cục bộ, ít rủi ro:
 
 ```text
 DISCOVER
-→ PLAN
-→ ANALYZE
-→ CHANGE
+→ IMPLEMENT
 → VALIDATE
-→ DOCS_IMPACT
 → FINALIZE
 ```
 
-Với code production, orchestrator bắt buộc giao sửa file cho `implementation-agent`. Với web/UI, `implementation-agent` có thể dùng trực tiếp Browser tools trong cùng browser-driven loop `reproduce → inspect → edit → browser verify`; không cần handoff qua `browser-agent` chỉ để thao tác browser. `browser-agent` dành cho independent validation, reproduction-only, regression/responsive check hoặc khi cần evidence tách khỏi writer. Build, lint, typecheck và final integration validation vẫn thuộc `cli-executor`.
-
-Sau validation, orchestrator đánh giá tác động tài liệu; không tự động sửa README nếu thay đổi không ảnh hưởng tài liệu liên quan.
-
-Ví dụ backend:
+Khi task vẫn bounded nhưng evidence cho thấy cần regression test mới, independent review hoặc domain validation, orchestrator dùng `guarded`:
 
 ```text
-Sửa lỗi campaign eligibility trong hai service này, thêm test hẹp nhất, chạy validation và chỉ cập nhật docs nếu public behavior hoặc vận hành bị thay đổi.
+DISCOVER
+→ IMPLEMENT
+→ optional TEST / REVIEW / DOMAIN
+→ VALIDATE
+→ FINALIZE
+```
+
+Phạm vi task quyết định `FAST_FIX` hay `LONG_RUNNING`; mức rủi ro quyết định độ sâu validation. Vì vậy một thay đổi một dòng liên quan security, concurrency hoặc data integrity vẫn có thể cần guarded validation. Ngược lại, task mechanical/local không bị ép qua review, test writer hoặc docs worker nếu không có evidence cần chúng.
+
+Với code production, orchestrator bắt buộc giao sửa file cho `implementation-agent`. `review-agent` không phải bước mặc định; `test-agent` chỉ được gọi khi cần thêm/sửa test; `docs-agent` chỉ được gọi khi docs impact là `required`. Build, lint, typecheck và final integration validation vẫn thuộc `cli-executor`, đồng thời fresh validation evidence cùng signature/revision được tái sử dụng thay vì chạy lại.
+
+Với web/UI, `implementation-agent` có thể dùng trực tiếp Browser tools trong cùng browser-driven loop `reproduce → inspect → edit → browser verify`; không cần handoff qua `browser-agent` chỉ để thao tác browser. `browser-agent` dành cho independent validation, reproduction-only, regression/responsive check hoặc khi cần evidence tách khỏi writer.
+
+Nếu discovery phát hiện nhiều phase phụ thuộc, migration/rollback, compatibility contract, cross-module coordination đáng kể, architecture decision chưa rõ hoặc validation không thể hoàn tất trong bounded loop, orchestrator chuyển task sang `LONG_RUNNING` thay vì cố giữ FAST_FIX.
+
+Ví dụ backend direct:
+
+```text
+Sửa null guard trong service này, giữ nguyên public contract và chạy validation hẹp phù hợp.
+```
+
+Ví dụ backend guarded:
+
+```text
+Sửa lỗi campaign eligibility trong hai service này, thêm regression test cần thiết và validate behavior thay đổi.
 ```
 
 Ví dụ web/UI:
@@ -416,56 +435,4 @@ git submodule add https://github.com/OneTwoTen/doct-agents.git third_party/doct-
 git submodule update --init --recursive
 python third_party/doct-agents/install.py install --scope workspace \
   --source-dir third_party/doct-agents/agents
-```
-
-## Phát triển và kiểm tra
-
-Chạy toàn bộ test Node/Python, validator, package dry-run và smoke test:
-
-```bash
-npm run check
-```
-
-Các lệnh hẹp hơn:
-
-```bash
-npm test
-npm run test:python
-npm run validate
-npm run pack:check
-npm run smoke:package
-RELEASE_TAG=v0.2.1 npm run release:check
-```
-
-CI chạy ba lane: Node 18/Python 3.9 trên Ubuntu, runtime hiện tại trên Ubuntu và runtime hiện tại trên Windows.
-
-## Publish lên npm
-
-Package dùng tên `doct-agents` và executable cùng tên. Workflow `.github/workflows/publish-npm.yml` publish khi tạo GitHub Release hoặc chạy thủ công với input tag bắt buộc.
-
-Quy trình release:
-
-1. Tăng `version` trong `package.json`.
-2. Merge thay đổi vào `main`.
-3. Tạo GitHub Release cùng version, ví dụ `v0.2.1`, hoặc chạy workflow thủ công với tag đã tồn tại.
-4. Workflow checkout tag và chạy `npm run check`.
-5. Workflow xác nhận tag bằng `v${package.json.version}` rồi mới `npm publish`.
-
-Nếu workflow vẫn dùng token, repository cần secret `NPM_TOKEN`. Sau khi Trusted Publishing được cấu hình có thể dùng OIDC.
-
-## Cấu trúc repo
-
-```text
-.
-├── .doct/                        # Project/feature knowledge và fallback specs cho LONG_RUNNING
-├── agents/                       # Agent source và nội dung npm package
-├── bin/cli.js                    # npm executable
-├── bin/doct-agents.js            # CLI implementation và installer logic
-├── docs/                         # Project docs; LONG_RUNNING specs mới nằm ở docs/specs/ khi thư mục này tồn tại
-├── install.py                    # Installer Python fallback
-├── package.json                  # npm package metadata
-├── scripts/                      # Validator/release/smoke scripts
-├── tests/                        # Node và Python unit tests
-├── .github/workflows/            # Validate và publish npm
-└── .vscode/                      # Cấu hình phát triển repo
 ```
