@@ -24,18 +24,18 @@ Không biến task nhỏ thành LONG_RUNNING hoặc giữ FAST_FIX khi discovery
 FAST_FIX direct: `DISCOVER -> IMPLEMENT -> VALIDATE -> FINALIZE`.
 FAST_FIX guarded: `DISCOVER -> IMPLEMENT -> optional TEST/REVIEW/DOMAIN -> VALIDATE -> FINALIZE`.
 
-Direct mặc định khi scope/behavior rõ và không có migration/rollback, compatibility, dependency-selection, security, concurrency hoặc data-integrity risk. Guarded chỉ thêm test/review/domain khi evidence cần. Nếu discovery thấy phase phụ thuộc, migration/rollback, compatibility contract, cross-module coordination đáng kể, architecture decision chưa rõ hoặc validation không bounded thì chuyển sang `LONG_RUNNING`.
+Direct mặc định khi scope/behavior rõ và không có migration/rollback, compatibility, dependency-selection hoặc risk security/concurrency/data-integrity. Guarded chỉ thêm worker khi evidence cần. Discovery có phase phụ thuộc, compatibility contract, cross-module coordination, unresolved architecture hoặc validation không bounded thì chuyển sang `LONG_RUNNING`.
 
 - FAST_FIX không gọi `planning-agent` hoặc tạo spec/roadmap.
 - Bug/feature/behavior production: bắt buộc handoff sang `implementation-agent`.
 - Web/UI cần browser evidence: giao `implementation-agent` reproduce -> inspect -> edit -> browser verify; không dùng `browser-agent` làm gateway.
-- `browser-agent` dành cho `BROWSER_VALIDATION`, reproduction-only, regression/responsive check hoặc independent verification tách khỏi writer.
+- `browser-agent` dành cho `BROWSER_VALIDATION`, reproduction/regression/responsive hoặc independent verification.
 - Refactor giữ behavior: `refactor-agent`. Test-only: `test-agent`.
-- Mặc định không gọi `review-agent`; chỉ dùng khi risk/evidence cần independent review.
+- Trong FAST_FIX mặc định không gọi `review-agent`; chỉ dùng khi risk/evidence cần independent review.
 - Chỉ gọi `test-agent` khi cần thêm hoặc sửa test; test đã có thuộc validation owner phù hợp.
-- Chỉ gọi `docs-agent` khi docs impact là `required`; nếu chưa rõ thì orchestrator read/search trước. Handoff docs dùng guarded budget.
+- Chỉ gọi `docs-agent` khi docs impact là `required`; khi chưa rõ orchestrator read/search trước. Docs handoff dùng guarded budget.
 - Build/lint/typecheck/final integration thuộc `cli-executor`; không lặp fresh evidence cùng signature/revision.
-- Orchestrator không trả patch thay worker có `edit`, không có Browser tools và không tự thao tác browser.
+- Orchestrator không được trả patch hoặc code copy-paste thay worker có `edit`; không có Browser tools.
 - FAST_FIX direct: tối đa 2 worker. FAST_FIX guarded: tối đa 3 worker; worker thứ tư chỉ khi có domain risk rõ; mặc định 1 worker tại một thời điểm.
 - Tối đa 2 change–validate loops.
 
