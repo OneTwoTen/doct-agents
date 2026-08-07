@@ -436,3 +436,55 @@ git submodule update --init --recursive
 python third_party/doct-agents/install.py install --scope workspace \
   --source-dir third_party/doct-agents/agents
 ```
+
+## Phát triển và kiểm tra
+
+Chạy toàn bộ test Node/Python, validator, package dry-run và smoke test:
+
+```bash
+npm run check
+```
+
+Các lệnh hẹp hơn:
+
+```bash
+npm test
+npm run test:python
+npm run validate
+npm run pack:check
+npm run smoke:package
+RELEASE_TAG=v0.2.1 npm run release:check
+```
+
+CI chạy ba lane: Node 18/Python 3.9 trên Ubuntu, runtime hiện tại trên Ubuntu và runtime hiện tại trên Windows.
+
+## Publish lên npm
+
+Package dùng tên `doct-agents` và executable cùng tên. Workflow `.github/workflows/publish-npm.yml` publish khi tạo GitHub Release hoặc chạy thủ công với input tag bắt buộc.
+
+Quy trình release:
+
+1. Tăng `version` trong `package.json`.
+2. Merge thay đổi vào `main`.
+3. Tạo GitHub Release cùng version, ví dụ `v0.2.1`, hoặc chạy workflow thủ công với tag đã tồn tại.
+4. Workflow checkout tag và chạy `npm run check`.
+5. Workflow xác nhận tag bằng `v${package.json.version}` rồi mới `npm publish`.
+
+Nếu workflow vẫn dùng token, repository cần secret `NPM_TOKEN`. Sau khi Trusted Publishing được cấu hình có thể dùng OIDC.
+
+## Cấu trúc repo
+
+```text
+.
+├── .doct/                        # Project/feature knowledge và fallback specs cho LONG_RUNNING
+├── agents/                       # Agent source và nội dung npm package
+├── bin/cli.js                    # npm executable
+├── bin/doct-agents.js            # CLI implementation và installer logic
+├── docs/                         # Project docs; LONG_RUNNING specs mới nằm ở docs/specs/ khi thư mục này tồn tại
+├── install.py                    # Installer Python fallback
+├── package.json                  # npm package metadata
+├── scripts/                      # Validator/release/smoke scripts
+├── tests/                        # Node và Python unit tests
+├── .github/workflows/            # Validate và publish npm
+└── .vscode/                      # Cấu hình phát triển repo
+```
