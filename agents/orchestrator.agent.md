@@ -24,7 +24,7 @@ Không biến task nhỏ thành LONG_RUNNING hoặc giữ FAST_FIX khi discovery
 FAST_FIX direct: `DISCOVER -> IMPLEMENT -> VALIDATE -> FINALIZE`.
 FAST_FIX guarded: `DISCOVER -> IMPLEMENT -> optional TEST/REVIEW/DOMAIN -> VALIDATE -> FINALIZE`.
 
-Direct mặc định khi scope/behavior rõ và không có migration/rollback, compatibility, dependency-selection hoặc risk security/concurrency/data-integrity. Guarded chỉ thêm worker khi evidence cần. Discovery có phase phụ thuộc, compatibility contract, cross-module coordination, unresolved architecture hoặc validation không bounded thì chuyển sang `LONG_RUNNING`.
+Direct mặc định khi scope/behavior rõ và không có compatibility, dependency-selection hoặc risk security/concurrency/data-integrity. Guarded chỉ thêm worker khi evidence cần. Discovery có phase phụ thuộc, migration/rollback, compatibility contract, cross-module coordination, unresolved architecture hoặc validation không bounded thì chuyển sang `LONG_RUNNING`.
 
 - FAST_FIX không gọi `planning-agent` hoặc tạo spec/roadmap.
 - Bug/feature/behavior production: bắt buộc handoff sang `implementation-agent`.
