@@ -20,18 +20,19 @@
 
 - [x] Thêm repository contract tests cho `direct`/`guarded`, escalation, optional workers, worker budget và FAST_FIX-specific implementation preconditions.
 - [x] Xác nhận RED trước implementation.
-- [x] Bổ sung regression assertions cho specialized routes `browser-agent`, `refactor-agent`, test-only và explicit `planning-agent = 0` sau diff review.
+- [x] Bổ sung regression assertions cho specialized routes `browser-agent`, `refactor-agent`, test-only, explicit `planning-agent = 0` và migration/rollback escalation sau diff review.
 
 Evidence:
 
 - Run `31140501604`: các FAST_FIX contract mới fail đúng vì prompt cũ chưa có adaptive behavior; existing tests không phát hiện regression ngoài scope.
 - Run `31141116441`: regression tests mới fail đúng ở explicit planning rule và specialized routes, giúp bắt phần contract bị rơi trong lần refactor đầu.
+- Run `31141812176`: regression test mới fail đúng vì `migration/rollback` chưa nằm trực tiếp trong escalation rule.
 
 ## Task 2: Implement adaptive FAST_FIX routing and handoff
 
 - [x] `FAST_FIX direct`: `DISCOVER -> IMPLEMENT -> VALIDATE -> FINALIZE`.
 - [x] `FAST_FIX guarded`: `DISCOVER -> IMPLEMENT -> optional TEST/REVIEW/DOMAIN -> VALIDATE -> FINALIZE`.
-- [x] Thêm explicit escalation sang LONG_RUNNING khi discovery cho thấy task không còn bounded.
+- [x] Thêm explicit escalation sang LONG_RUNNING khi discovery cho thấy task không còn bounded, gồm migration/rollback.
 - [x] Review/test/docs/domain worker chỉ được thêm theo risk/evidence; planning-agent không chạy trong FAST_FIX.
 - [x] Direct tối đa 2 worker; guarded tối đa 3 worker, worker thứ tư chỉ khi có domain risk rõ; mặc định 1 worker tại một thời điểm.
 - [x] FAST_FIX implementation handoff chỉ bắt buộc `Objective`, `Scope`, `Expected behavior`; `Validation plan` trở thành conditional.
@@ -59,9 +60,9 @@ Intermediate evidence:
 
 ## Final validation evidence
 
-Behavior revision: `3281a3a08f4abac2e247abf6f3e27128b846d3c4`.
+Behavior revision: `b7a7ed3f07778d1ec992e0146278bf95aefb7c13`.
 
-GitHub Actions run `31141609630`:
+GitHub Actions run `31141889762`:
 
 - `Validate (ubuntu-current)`: success.
 - `Validate (ubuntu-minimum)`: success.
