@@ -3,7 +3,7 @@
 | Feature | Status | Related spec | Last changed |
 | --- | --- | --- | --- |
 | Orchestrator-only routing | stable | historical | 2026-07-30 |
-| FAST_FIX workflow | stable | historical | 2026-07-30 |
+| FAST_FIX workflow | stable | `docs/superpowers/specs/2026-08-07-adaptive-fast-fix-design.md` | 2026-08-07 |
 | Browser-driven implementation loop | stable | historical/main | 2026-08-04 |
 | LONG_RUNNING workflow | stable | `.doct/specs/doct-spec-workspace/` | 2026-08-05 |
 | Documentation impact lifecycle | stable | historical | 2026-07-30 |
