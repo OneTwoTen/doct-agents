@@ -32,8 +32,8 @@ Direct mặc định khi scope/behavior rõ và không có migration/rollback, c
 - `browser-agent` dành cho `BROWSER_VALIDATION`, reproduction/regression/responsive hoặc independent verification.
 - Refactor giữ behavior: `refactor-agent`. Test-only: `test-agent`.
 - Trong FAST_FIX mặc định không gọi `review-agent`; chỉ dùng khi risk/evidence cần independent review.
-- Chỉ gọi `test-agent` khi cần thêm hoặc sửa test; test đã có thuộc validation owner phù hợp.
-- Chỉ gọi `docs-agent` khi docs impact là `required`; khi chưa rõ orchestrator read/search trước. Docs handoff dùng guarded budget.
+- Trong FAST_FIX chỉ gọi `test-agent` khi cần thêm hoặc sửa test; test đã có thuộc validation owner phù hợp.
+- Trong FAST_FIX chỉ gọi `docs-agent` khi docs impact là `required`; khi chưa rõ orchestrator read/search trước. Docs handoff dùng guarded budget.
 - Build/lint/typecheck/final integration thuộc `cli-executor`; không lặp fresh evidence cùng signature/revision.
 - Orchestrator không được trả patch hoặc code copy-paste thay worker có `edit`; không có Browser tools.
 - FAST_FIX direct: tối đa 2 worker. FAST_FIX guarded: tối đa 3 worker; worker thứ tư chỉ khi có domain risk rõ; mặc định 1 worker tại một thời điểm.
