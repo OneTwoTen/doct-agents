@@ -30,6 +30,10 @@ class AdaptiveFastFixContractTest(unittest.TestCase):
 
     def test_fast_fix_optional_workers_are_not_defaults(self) -> None:
         self.assertIn(
+            "FAST_FIX không gọi `planning-agent`",
+            self.orchestrator_text,
+        )
+        self.assertIn(
             "mặc định không gọi `review-agent`",
             self.orchestrator_text,
         )
@@ -41,6 +45,14 @@ class AdaptiveFastFixContractTest(unittest.TestCase):
             "chỉ gọi `docs-agent` khi docs impact là `required`",
             self.orchestrator_text,
         )
+
+    def test_fast_fix_preserves_specialized_routes(self) -> None:
+        self.assertIn(
+            "`browser-agent` dành cho `BROWSER_VALIDATION`",
+            self.orchestrator_text,
+        )
+        self.assertIn("Refactor giữ behavior: `refactor-agent`", self.orchestrator_text)
+        self.assertIn("Test-only: `test-agent`", self.orchestrator_text)
 
     def test_fast_fix_can_escalate_to_long_running(self) -> None:
         self.assertIn("chuyển sang `LONG_RUNNING`", self.orchestrator_text)
