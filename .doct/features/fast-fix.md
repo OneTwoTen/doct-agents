@@ -37,7 +37,7 @@ FAST_FIX điều phối task kỹ thuật bounded bằng execution path adaptive
 
 ## Validation
 
-Behavior revision `3281a3a08f4abac2e247abf6f3e27128b846d3c4` đã pass GitHub Actions run `31141609630` trên Ubuntu current, Ubuntu minimum và Windows current. Mỗi lane hoàn thành full `npm run check`, gồm Node tests, 62 Python tests, agent validator/prompt-size budget, package dry-run và packaged CLI smoke test.
+Behavior revision `b7a7ed3f07778d1ec992e0146278bf95aefb7c13` đã pass GitHub Actions run `31141889762` trên Ubuntu current, Ubuntu minimum và Windows current. Mỗi lane hoàn thành full `npm run check`, gồm Node tests, 62 Python tests, agent validator/prompt-size budget, package dry-run và packaged CLI smoke test.
 
 ## Related specs
 
