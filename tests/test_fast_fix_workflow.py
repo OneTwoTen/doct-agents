@@ -56,8 +56,10 @@ class AdaptiveFastFixContractTest(unittest.TestCase):
 
     def test_fast_fix_can_escalate_to_long_running(self) -> None:
         self.assertIn("chuyển sang `LONG_RUNNING`", self.orchestrator_text)
-        self.assertIn("migration/rollback", self.orchestrator_text)
-        self.assertIn("compatibility", self.orchestrator_text)
+        self.assertIn(
+            "phase phụ thuộc, migration/rollback, compatibility contract",
+            self.orchestrator_text,
+        )
         self.assertIn("architecture", self.orchestrator_text.lower())
 
     def test_fast_fix_has_smaller_default_worker_budget(self) -> None:
