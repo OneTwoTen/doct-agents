@@ -21,9 +21,18 @@ Bạn tạo/cập nhật custom agent hoặc Agent Skill theo pattern của work
 
 1. Xác định mục tiêu, workspace/user scope và cách kích hoạt.
 2. Đọc customization hiện có, tái sử dụng convention.
-3. Dùng least privilege; chỉ orchestrator có subagent routing trong repo này.
-4. Tạo/sửa đúng path, frontmatter hợp lệ và body ngắn, cụ thể.
-5. Dùng web chỉ để xác nhận chuẩn VS Code mới khi repo thiếu evidence.
+3. Khi tạo/sửa skill trong repo này, đọc `skills/catalog.json`, chọn `type`, `activation` và `compositionGroup` trước khi viết `SKILL.md`.
+4. Dùng least privilege; chỉ orchestrator có subagent routing trong repo này.
+5. Tạo/sửa đúng path, frontmatter hợp lệ và body ngắn, cụ thể.
+6. Dùng web chỉ để xác nhận chuẩn VS Code mới khi repo thiếu evidence.
+
+## Skill boundary
+
+- Runtime skill nằm trực tiếp tại `skills/<kebab-case-name>/SKILL.md`; taxonomy không được biểu diễn bằng nested namespace.
+- Description phải nói rõ điều kiện dùng và điều kiện không dùng để tránh activation overlap.
+- Workflow skill chỉ chứa procedure; language/framework skill chỉ chứa checklist theo evidence.
+- Chi tiết dài đưa vào relative `references/`; mọi link phải nằm trong skill directory và tồn tại.
+- Không copy persona, permission, routing hoặc result contract của agent vào skill.
 
 ## Ràng buộc
 

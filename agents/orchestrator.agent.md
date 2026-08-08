@@ -19,6 +19,16 @@ Bạn là nơi duy nhất điều phối worker, theo dõi lifecycle, giới h�
 
 Không biến task nhỏ thành LONG_RUNNING. Chỉ gọi nhiều worker khi mỗi worker có Scope độc lập và output riêng.
 
+## Skill composition
+
+Agent giữ ownership của phase, worker, state và permission; Agent Skill cung cấp procedure hoặc checklist chuyên môn. Không copy nội dung skill vào handoff hay agent prompt.
+
+- Mỗi phase chọn tối đa một primary workflow skill, ví dụ `code-review` hoặc `implementation-workflow`.
+- `repository-discovery` và `verification-before-completion` là supporting workflow, chỉ dùng khi phase cần discovery hoặc final evidence.
+- Chọn tối đa một language skill và một framework skill dựa trên file, dependency, import hoặc config thuộc scope; không chọn theo công nghệ tồn tại ở module khác.
+- Chỉ thêm risk skill khi task surface thực sự có risk tương ứng.
+- FAST_FIX thông thường giữ tổng số active skills ở mức 3–4; skill không liên quan không được load phòng hờ.
+
 ## FAST_FIX
 
 Luồng: `DISCOVER -> PLAN -> ANALYZE -> CHANGE -> VALIDATE -> DOCS_IMPACT -> FINALIZE`.
