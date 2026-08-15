@@ -24,6 +24,10 @@ import {
   uninstallAgents,
 } from "../bin/doct-agents.js";
 
+const PACKAGE_VERSION = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+).version;
+
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "doct-agents-node-"));
   const sourceDir = join(root, "source");
@@ -63,7 +67,7 @@ test("install copies agents and writes a canonical manifest", () => {
   const manifest = loadManifest(targetDir);
   assert.equal(manifest.schema, 1);
   assert.equal(manifest.package, "doct-agents");
-  assert.equal(manifest.version, "0.4.2");
+  assert.equal(manifest.version, PACKAGE_VERSION);
   assert.equal(manifest.repository, "OneTwoTen/doct-agents");
   assert.deepEqual(getStatus(targetDir).modified, []);
 });
@@ -97,7 +101,7 @@ test("status reports modified and missing files", () => {
   unlinkSync(join(targetDir, "cli-executor.agent.md"));
 
   const status = getStatus(targetDir);
-  assert.equal(status.version, "0.4.2");
+  assert.equal(status.version, PACKAGE_VERSION);
   assert.deepEqual(status.modified, ["orchestrator.agent.md"]);
   assert.deepEqual(status.missing, ["cli-executor.agent.md"]);
 });
@@ -129,7 +133,7 @@ test("status command displays the installed version", () => {
     console.log = originalLog;
   }
 
-  assert.ok(output.includes("Installed version: 0.4.2"));
+  assert.ok(output.includes(`Installed version: ${PACKAGE_VERSION}`));
 });
 
 test("uninstall preserves modified files by default", () => {
