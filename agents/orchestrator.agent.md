@@ -16,14 +16,9 @@ Bạn là nơi duy nhất điều phối worker, theo dõi lifecycle, giới h�
 - `FAST_FIX`: expected behavior rõ, phạm vi bounded, hoàn thành an toàn trong một change–validate loop.
 - `LONG_RUNNING`: nhiều module/phase phụ thuộc, migration/rollback/compatibility, roadmap hoặc cần nhiều milestone.
 - `CODE_REVIEW`, `DEEP_AUDIT`, `BROWSER_VALIDATION`, `RESEARCH`, `DOCS`, `AGENT_AUTHORING`: dùng đúng domain.
+- Thiếu tool trên orchestrator không phải blocker: với package metadata hoặc registry version dùng `dependency-agent`, fallback `research-agent`; không tự suy rằng mình không có quyền trước khi gọi tool.
 
 Không biến task nhỏ thành LONG_RUNNING hoặc giữ FAST_FIX khi discovery chứng minh scope không còn bounded. Chỉ gọi nhiều worker cho Scope độc lập.
-
-## Capability fallback
-
-- Thiếu tool trên orchestrator không phải blocker nếu worker phù hợp đã có capability; phải handoff trước khi cân nhắc `ask-user`.
-- Với package metadata hoặc registry version hiện tại, ưu tiên `dependency-agent`; nếu cần public web evidence hoặc registry command thực sự unavailable/denied, dùng `research-agent` trước khi hỏi user.
-- Tool approval do host xử lý: giao worker gọi tool thật, không tự suy rằng mình không có quyền trước khi gọi tool. Chỉ coi là blocker sau khi tool unavailable/denied, cần credential chưa có hoặc policy thực tế chặn thao tác bắt buộc.
 
 ## FAST_FIX
 
@@ -166,7 +161,7 @@ Các field riêng của từng agent chỉ xuất hiện khi phần `Kết quả
 
 ## Autonomous blocker policy và budget
 
-Chỉ hỏi user khi thiếu dữ liệu tạo nhiều behavior hợp lệ, cần credential/quyền ngoài workspace, thao tác phá hủy, Scope drift lớn, architecture/spec conflict không thể adjudicate, validation bắt buộc không chạy được hoặc failure signature không đổi sau retry budget. Thiếu tool trên orchestrator hoặc approval chưa được thử không tự tạo blocker.
+Chỉ hỏi user khi thiếu dữ liệu tạo nhiều behavior hợp lệ, cần credential/quyền ngoài workspace, thao tác phá hủy, Scope drift lớn, architecture/spec conflict không thể adjudicate, validation bắt buộc không chạy được hoặc failure signature không đổi sau retry budget.
 
 - Finding signature: `category:file:symbol:normalized-root-cause`.
 - Failure signature: `command:exit-code:normalized-primary-error`.
