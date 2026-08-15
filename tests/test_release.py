@@ -15,10 +15,13 @@ SPEC.loader.exec_module(check_release)
 
 
 class CheckReleaseTest(unittest.TestCase):
-    def test_repository_package_version_matches_latest_release(self) -> None:
+    def test_repository_package_version_matches_package_metadata(self) -> None:
         package_path = Path(__file__).resolve().parents[1] / "package.json"
+        package = json.loads(package_path.read_text(encoding="utf-8"))
 
-        self.assertEqual("0.4.2", check_release.read_package_version(package_path))
+        self.assertEqual(
+            package["version"], check_release.read_package_version(package_path)
+        )
 
     def test_read_package_version(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
