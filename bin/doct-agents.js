@@ -23,6 +23,8 @@ const MANIFEST_NAME = ".doct-agents-manifest.json";
 const PACKAGE_NAME = "doct-agents";
 const REPOSITORY = "OneTwoTen/doct-agents";
 const SHA256_PATTERN = /^[a-f0-9]{64}$/i;
+const PACKAGE_VERSION = JSON.parse(readFileSync(join(PACKAGE_ROOT, "package.json"), "utf8")).version;
+const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 
 export class InstallConflict extends Error {}
 
@@ -35,17 +37,18 @@ function entryAt(path) {
   }
 }
 
-function canonicalManifest(files) {
+function canonicalManifest(files, version = PACKAGE_VERSION) {
   return {
     schema: 1,
     package: PACKAGE_NAME,
+    version,
     repository: REPOSITORY,
     files,
   };
 }
 
-function manifestText(files) {
-  return `${JSON.stringify(canonicalManifest(files), null, 2)}\n`;
+function manifestText(files, version = PACKAGE_VERSION) {
+  return `${JSON.stringify(canonicalManifest(files, version), null, 2)}\n`;
 }
 
 export function validateManagedFilename(filename) {
@@ -133,10 +136,10 @@ function manifestPath(target) {
   return join(target, MANIFEST_NAME);
 }
 
-function writeManifest(target, files) {
+function writeManifest(target, files, version = PACKAGE_VERSION) {
   const path = manifestPath(target);
   assertRegularPath(path, `Installer manifest ${path}`);
-  writeFileSync(path, manifestText(files), "utf8");
+  writeFileSync(path, manifestText(files, version), "utf8");
 }
 
 export function sha256(path) {
@@ -187,7 +190,11 @@ export function loadManifest(targetDir) {
       }
       files[filename] = expected.toLowerCase();
     }
-    return canonicalManifest(files);
+    const version = manifest.version ?? null;
+    if (version !== null && (typeof version !== "string" || !VERSION_PATTERN.test(version))) {
+      throw new Error(`invalid version ${JSON.stringify(version)}`);
+    }
+    return canonicalManifest(files, version);
   } catch (error) {
     if (error instanceof InstallConflict) throw error;
     throw new InstallConflict(`Cannot read installer manifest ${path}: ${error.message}`);
@@ -353,7 +360,7 @@ export function getStatus(targetDir) {
     else if (sha256(destination) !== expected) modified.push(filename);
     else installed.push(filename);
   }
-  return { installed, modified, missing, target };
+  return { installed, modified, missing, target, version: manifest.version };
 }
 
 export function uninstallAgents(targetDir, { force = false } = {}) {
@@ -378,7 +385,7 @@ export function uninstallAgents(targetDir, { force = false } = {}) {
 
   const path = manifestPath(target);
   if (Object.keys(remaining).length > 0) {
-    writeManifest(target, remaining);
+    writeManifest(target, remaining, manifest.version);
   } else {
     const entry = entryAt(path);
     if (entry?.isSymbolicLink()) {
@@ -433,6 +440,7 @@ export function run(argv = process.argv.slice(2)) {
       return 1;
     }
     console.log(`Target: ${status.target}`);
+    console.log(`Installed version: ${status.version ?? "unknown (legacy install)"}`);
     console.log(`Installed: ${status.installed.length}`);
     console.log(`Modified: ${status.modified.join(", ") || "none"}`);
     console.log(`Missing: ${status.missing.join(", ") || "none"}`);

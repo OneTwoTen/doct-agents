@@ -70,6 +70,7 @@ try {
   assert.equal(existsSync(manifestPath), true, "install must create a manifest");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   assert.equal(manifest.package, "doct-agents");
+  assert.equal(manifest.version, packResult[0].version);
   assert.equal(manifest.repository, "OneTwoTen/doct-agents");
 
   run(binary, ["status", "--target", targetDir], binaryOptions);

@@ -19,6 +19,7 @@ import {
   getStatus,
   installAgents,
   loadManifest,
+  run,
   sha256,
   uninstallAgents,
 } from "../bin/doct-agents.js";
@@ -62,6 +63,7 @@ test("install copies agents and writes a canonical manifest", () => {
   const manifest = loadManifest(targetDir);
   assert.equal(manifest.schema, 1);
   assert.equal(manifest.package, "doct-agents");
+  assert.equal(manifest.version, "0.4.2");
   assert.equal(manifest.repository, "OneTwoTen/doct-agents");
   assert.deepEqual(getStatus(targetDir).modified, []);
 });
@@ -95,8 +97,39 @@ test("status reports modified and missing files", () => {
   unlinkSync(join(targetDir, "cli-executor.agent.md"));
 
   const status = getStatus(targetDir);
+  assert.equal(status.version, "0.4.2");
   assert.deepEqual(status.modified, ["orchestrator.agent.md"]);
   assert.deepEqual(status.missing, ["cli-executor.agent.md"]);
+});
+
+test("status reports an unknown version for legacy manifests", () => {
+  const { targetDir } = fixture();
+  mkdirSync(targetDir);
+  const destination = join(targetDir, "orchestrator.agent.md");
+  writeFileSync(destination, "installed\n", "utf8");
+  writeManifest(targetDir, {
+    schema: 1,
+    package: "doct-agents",
+    repository: "OneTwoTen/doct-agents",
+    files: { "orchestrator.agent.md": sha256(destination) },
+  });
+
+  assert.equal(getStatus(targetDir).version, null);
+});
+
+test("status command displays the installed version", () => {
+  const { sourceDir, targetDir } = fixture();
+  installAgents({ sourceDir, targetDir });
+  const output = [];
+  const originalLog = console.log;
+  console.log = (line) => output.push(line);
+  try {
+    assert.equal(run(["status", "--target", targetDir]), 0);
+  } finally {
+    console.log = originalLog;
+  }
+
+  assert.ok(output.includes("Installed version: 0.4.2"));
 });
 
 test("uninstall preserves modified files by default", () => {
@@ -108,6 +141,18 @@ test("uninstall preserves modified files by default", () => {
   assert.deepEqual(result.preserved, ["orchestrator.agent.md"]);
   assert.equal(existsSync(join(targetDir, "orchestrator.agent.md")), true);
   assert.equal(existsSync(join(targetDir, "cli-executor.agent.md")), false);
+});
+
+test("partial uninstall preserves the installed version", () => {
+  const { sourceDir, targetDir } = fixture();
+  installAgents({ sourceDir, targetDir });
+  const manifest = loadManifest(targetDir);
+  writeManifest(targetDir, { ...manifest, version: "0.3.0" });
+  writeFileSync(join(targetDir, "orchestrator.agent.md"), "local-change\n", "utf8");
+
+  uninstallAgents(targetDir);
+
+  assert.equal(loadManifest(targetDir).version, "0.3.0");
 });
 
 test("manifest rejects parent traversal before uninstall even with force", () => {
