@@ -55,7 +55,7 @@ Sau khi chọn path, toàn bộ workflow dùng cùng bốn file:
 - `tasks.md`: WORK, roadmap, file ownership và checklist chính.
 - `progress.md`: STATE, checkpoint/evidence để resume; không sao chép checklist.
 
-Feature hiện tại vẫn được tổng hợp ở `.doct/features/index.md` và `.doct/features/<feature>.md`. Spec lưu lịch sử thay đổi; feature record mô tả capability hiện tại.
+Feature hiện tại nằm ở `.doct/features/index.md` và `.doct/features/<feature>.md`; spec lưu lịch sử thay đổi.
 
 State machine:
 
@@ -131,7 +131,7 @@ Trước khi kết luận LONG_RUNNING thành công:
 - `progress.md` phản ánh completion state, validation revision và evidence tương ứng.
 - `.doct/features/*` chỉ được ghi `stable` khi dựa trên cùng validated state.
 
-Nếu các file đặc tả còn lệch với implementation thực tế, gọi đúng owner để cập nhật trước `FINALIZE`. Nếu sau validation chỉ sửa metadata/evidence mà không đổi behavior hay Validation criteria, ghi rõ validation revision đang được reuse thay vì chạy lại CI không cần thiết.
+Nếu spec lệch implementation, gọi đúng owner cập nhật trước `FINALIZE`. Sửa metadata/evidence không đổi behavior/criteria thì reuse validation revision.
 
 ## Thông tin khi giao việc
 
