@@ -46,7 +46,7 @@ class InstallAgentsTest(unittest.TestCase):
         manifest = installer.load_manifest(self.target)
         self.assertEqual(1, manifest["schema"])
         self.assertEqual("doct-agents", manifest["package"])
-        self.assertEqual("0.4.2", manifest["version"])
+        self.assertEqual(installer.PACKAGE_VERSION, manifest["version"])
         self.assertEqual("OneTwoTen/doct-agents", manifest["repository"])
         self.assertEqual(
             ["orchestrator.agent.md", "review-agent.agent.md"],
@@ -125,7 +125,7 @@ class InstallAgentsTest(unittest.TestCase):
 
         status = installer.get_status(self.target)
 
-        self.assertEqual("0.4.2", status.version)
+        self.assertEqual(installer.PACKAGE_VERSION, status.version)
         self.assertEqual(["orchestrator.agent.md"], status.modified)
         self.assertEqual(["review-agent.agent.md"], status.missing)
 
