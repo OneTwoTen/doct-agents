@@ -23,7 +23,20 @@ PACKAGE_NAME = "doct-agents"
 DEFAULT_REF = "main"
 MANIFEST_NAME = ".doct-agents-manifest.json"
 SHA256_PATTERN = re.compile(r"[a-fA-F0-9]{64}\Z")
+VERSION_PATTERN = re.compile(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\Z")
 REPARSE_POINT_ATTRIBUTE = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+
+
+def read_package_version(package_path: Path) -> Optional[str]:
+    try:
+        package = json.loads(package_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    version = package.get("version") if isinstance(package, dict) else None
+    return version if isinstance(version, str) and VERSION_PATTERN.fullmatch(version) else None
+
+
+PACKAGE_VERSION = read_package_version(Path(__file__).resolve().with_name("package.json"))
 
 
 class InstallConflict(RuntimeError):
@@ -46,19 +59,25 @@ class InstallStatus(NamedTuple):
     modified: list[str]
     missing: list[str]
     target: Path
+    version: Optional[str]
 
 
-def canonical_manifest(files: dict[str, str]) -> dict[str, object]:
+def canonical_manifest(
+    files: dict[str, str], version: Optional[str] = PACKAGE_VERSION
+) -> dict[str, object]:
     return {
         "schema": 1,
         "package": PACKAGE_NAME,
+        "version": version,
         "repository": REPOSITORY,
         "files": files,
     }
 
 
-def manifest_text(files: dict[str, str]) -> str:
-    return json.dumps(canonical_manifest(files), indent=2, sort_keys=True) + "\n"
+def manifest_text(
+    files: dict[str, str], version: Optional[str] = PACKAGE_VERSION
+) -> str:
+    return json.dumps(canonical_manifest(files, version), indent=2, sort_keys=True) + "\n"
 
 
 def normalize_target(target_dir: Path) -> Path:
@@ -159,10 +178,14 @@ def manifest_path(target_dir: Path) -> Path:
     return target_dir / MANIFEST_NAME
 
 
-def write_manifest(target_dir: Path, files: dict[str, str]) -> None:
+def write_manifest(
+    target_dir: Path,
+    files: dict[str, str],
+    version: Optional[str] = PACKAGE_VERSION,
+) -> None:
     path = manifest_path(target_dir)
     assert_regular_path(path, f"Installer manifest {path}")
-    path.write_text(manifest_text(files), encoding="utf-8")
+    path.write_text(manifest_text(files, version), encoding="utf-8")
 
 
 def sha256(path: Path) -> str:
@@ -211,7 +234,12 @@ def load_manifest(target_dir: Path) -> dict[str, object]:
             ):
                 raise ValueError(f"invalid SHA-256 for {filename}")
             files[filename] = expected_hash.lower()
-        return canonical_manifest(files)
+        version = data.get("version")
+        if version is not None and (
+            not isinstance(version, str) or not VERSION_PATTERN.fullmatch(version)
+        ):
+            raise ValueError(f"invalid version {version!r}")
+        return canonical_manifest(files, version)
     except (InstallConflict, ValueError) as exc:
         raise InstallConflict(f"Invalid installer manifest: {path}: {exc}") from exc
 
@@ -233,6 +261,7 @@ def stage_install(
     target_dir: Path,
     sources: list[Path],
     preserved_obsolete: dict[str, str],
+    version: Optional[str],
 ) -> Path:
     stage = Path(
         tempfile.mkdtemp(
@@ -247,7 +276,7 @@ def stage_install(
             shutil.copyfile(source, staged)
             installed_files[source.name] = sha256(staged)
         (stage / MANIFEST_NAME).write_text(
-            manifest_text(installed_files), encoding="utf-8"
+            manifest_text(installed_files, version), encoding="utf-8"
         )
         return stage
     except BaseException:
@@ -348,6 +377,7 @@ def commit_staged_install(
 
 def install_agents(source_dir: Path, target_dir: Path, *, force: bool = False) -> InstallResult:
     source_dir = source_dir.resolve()
+    version = read_package_version(source_dir.parent / "package.json") or PACKAGE_VERSION
     target_dir = prepare_target(target_dir)
     sources = find_agent_files(source_dir)
     current_names = {source.name for source in sources}
@@ -389,7 +419,7 @@ def install_agents(source_dir: Path, target_dir: Path, *, force: bool = False) -
             "Re-run with --force only when replacing those files is intentional."
         )
 
-    stage = stage_install(source_dir, target_dir, sources, preserved_obsolete)
+    stage = stage_install(source_dir, target_dir, sources, preserved_obsolete, version)
     commit_staged_install(target_dir, stage, sources, obsolete_to_remove)
     return InstallResult(installed=len(sources), target=target_dir)
 
@@ -411,7 +441,9 @@ def get_status(target_dir: Path) -> InstallStatus:
             modified.append(filename)
         else:
             installed.append(filename)
-    return InstallStatus(installed, modified, missing, target_dir)
+    version = manifest["version"]
+    assert version is None or isinstance(version, str)
+    return InstallStatus(installed, modified, missing, target_dir, version)
 
 
 def uninstall_agents(target_dir: Path, *, force: bool = False) -> UninstallResult:
@@ -438,7 +470,9 @@ def uninstall_agents(target_dir: Path, *, force: bool = False) -> UninstallResul
 
     path = manifest_path(target_dir)
     if remaining:
-        write_manifest(target_dir, remaining)
+        version = manifest["version"]
+        assert version is None or isinstance(version, str)
+        write_manifest(target_dir, remaining, version)
     elif lstat_or_none(path):
         assert_regular_path(path, f"Installer manifest {path}")
         path.unlink()
@@ -542,6 +576,10 @@ def main(argv: Optional[list[str]] = None) -> int:
                 print(f"doct-agents is not installed in {status.target}")
                 return 1
             print(f"Target: {status.target}")
+            print(
+                "Installed version: "
+                + (status.version if status.version else "unknown (legacy install)")
+            )
             print(f"Installed: {len(status.installed)}")
             print(f"Modified: {', '.join(status.modified) if status.modified else 'none'}")
             print(f"Missing: {', '.join(status.missing) if status.missing else 'none'}")

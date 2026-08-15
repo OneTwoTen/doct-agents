@@ -46,11 +46,22 @@ class InstallAgentsTest(unittest.TestCase):
         manifest = installer.load_manifest(self.target)
         self.assertEqual(1, manifest["schema"])
         self.assertEqual("doct-agents", manifest["package"])
+        self.assertEqual("0.4.2", manifest["version"])
         self.assertEqual("OneTwoTen/doct-agents", manifest["repository"])
         self.assertEqual(
             ["orchestrator.agent.md", "review-agent.agent.md"],
             sorted(manifest["files"]),
         )
+
+    def test_install_uses_downloaded_source_package_version(self) -> None:
+        (self.source.parent / "package.json").write_text(
+            json.dumps({"name": "doct-agents", "version": "1.2.3"}),
+            encoding="utf-8",
+        )
+
+        installer.install_agents(self.source, self.target)
+
+        self.assertEqual("1.2.3", installer.load_manifest(self.target)["version"])
 
     def test_install_rejects_unmanaged_conflict_without_force(self) -> None:
         self.target.mkdir()
@@ -96,6 +107,17 @@ class InstallAgentsTest(unittest.TestCase):
         self.assertFalse((self.target / "orchestrator.agent.md").exists())
         self.assertTrue((self.target / "review-agent.agent.md").exists())
 
+    def test_partial_uninstall_preserves_installed_version(self) -> None:
+        installer.install_agents(self.source, self.target)
+        manifest = installer.load_manifest(self.target)
+        manifest["version"] = "0.3.0"
+        self.write_manifest(self.target, manifest)
+        (self.target / "review-agent.agent.md").write_text("local edit", encoding="utf-8")
+
+        installer.uninstall_agents(self.target)
+
+        self.assertEqual("0.3.0", installer.load_manifest(self.target)["version"])
+
     def test_status_reports_modified_and_missing_files(self) -> None:
         installer.install_agents(self.source, self.target)
         (self.target / "orchestrator.agent.md").write_text("changed", encoding="utf-8")
@@ -103,8 +125,25 @@ class InstallAgentsTest(unittest.TestCase):
 
         status = installer.get_status(self.target)
 
+        self.assertEqual("0.4.2", status.version)
         self.assertEqual(["orchestrator.agent.md"], status.modified)
         self.assertEqual(["review-agent.agent.md"], status.missing)
+
+    def test_status_reports_unknown_version_for_legacy_manifest(self) -> None:
+        self.target.mkdir()
+        destination = self.target / "orchestrator.agent.md"
+        destination.write_text("installed", encoding="utf-8")
+        self.write_manifest(
+            self.target,
+            {
+                "schema": 1,
+                "package": "doct-agents",
+                "repository": installer.REPOSITORY,
+                "files": {"orchestrator.agent.md": installer.sha256(destination)},
+            },
+        )
+
+        self.assertIsNone(installer.get_status(self.target).version)
 
     def test_manifest_rejects_parent_traversal_before_force_uninstall(self) -> None:
         outside = self.root / "outside.agent.md"

@@ -114,6 +114,7 @@ npx doct-agents@latest status --scope user
 
 Kết quả phân biệt:
 
+- `Installed version`: phiên bản package đã ghi manifest ở lần cài hoặc update gần nhất; bản cài cũ chưa có trường này hiển thị `unknown (legacy install)`.
 - `Installed`: file còn nguyên như lần cài gần nhất.
 - `Modified`: file đã được chỉnh sửa cục bộ.
 - `Missing`: file do installer quản lý nhưng đã bị xóa.
@@ -453,7 +454,7 @@ npm run test:python
 npm run validate
 npm run pack:check
 npm run smoke:package
-RELEASE_TAG=v0.2.1 npm run release:check
+RELEASE_TAG=v0.4.2 npm run release:check
 ```
 
 CI chạy ba lane: Node 18/Python 3.9 trên Ubuntu, runtime hiện tại trên Ubuntu và runtime hiện tại trên Windows.
@@ -466,7 +467,7 @@ Quy trình release:
 
 1. Tăng `version` trong `package.json`.
 2. Merge thay đổi vào `main`.
-3. Tạo GitHub Release cùng version, ví dụ `v0.2.1`, hoặc chạy workflow thủ công với tag đã tồn tại.
+3. Tạo GitHub Release cùng version, ví dụ `v0.4.2`, hoặc chạy workflow thủ công với tag đã tồn tại.
 4. Workflow checkout tag và chạy `npm run check`.
 5. Workflow xác nhận tag bằng `v${package.json.version}` rồi mới `npm publish`.
 
