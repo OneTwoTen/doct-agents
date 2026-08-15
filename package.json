@@ -1,6 +1,6 @@
 {
   "name": "doct-agents",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Install and manage DOCT VS Code custom agents.",
   "type": "module",
   "bin": {
