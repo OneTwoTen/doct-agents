@@ -55,19 +55,39 @@ Dùng cùng repo revision và cùng model cho từng lần đo.
 
 ### FAST_FIX
 
-Prompt mẫu:
+Đo riêng `direct` và `guarded`; không gộp hai path vào cùng một median.
+
+Prompt direct mẫu:
 
 ```text
-Sửa một bug cục bộ trong một module, thêm test hẹp nhất và validate.
+Sửa một bug cục bộ có expected behavior rõ, dùng validation hẹp có sẵn và không thêm capability ngoài scope.
+```
+
+Prompt guarded mẫu:
+
+```text
+Sửa một bug business logic cục bộ, thêm regression test cần thiết và validate thay đổi.
 ```
 
 Theo dõi:
 
-- số subagent được gọi;
+- execution path `direct | guarded`;
+- số subagent được gọi và worker nào thực sự cần thiết;
 - command validation có bị chạy lặp không;
-- input/output token của orchestrator, implementation, review và CLI;
+- input/output token của orchestrator, implementation, test/review và CLI;
 - cache hit giữa các model request;
 - tổng duration.
+
+Mục tiêu ban đầu cho `FAST_FIX direct`:
+
+```text
+planning-agent calls = 0
+review-agent default = 0
+docs-agent default = 0
+median worker count <= 2
+duplicate validation signature = 0
+change/validate loops = 1 normally
+```
 
 ### CODE_REVIEW
 
@@ -98,12 +118,12 @@ Theo dõi:
 
 ## Baseline và mục tiêu
 
-Đo ít nhất 5 session cho mỗi workflow và dùng median thay vì một lần chạy đơn lẻ.
+Đo ít nhất 5 session cho mỗi workflow/path và dùng median thay vì một lần chạy đơn lẻ.
 
 Các mục tiêu ban đầu:
 
 - không có command validation trùng signature cho cùng code revision;
-- FAST_FIX mặc định không gọi worker không liên quan;
+- FAST_FIX direct mặc định không gọi worker không liên quan;
 - independent-analysis mặc định tối đa 2 worker;
 - worker summary không vượt 120 từ;
 - handoff context không vượt 10 bullet;

@@ -163,26 +163,45 @@ Các worker khác mặc định được orchestrator gọi, không cần chọn
 
 ## Workflow task ngắn: FAST_FIX
 
-`FAST_FIX` dùng khi phạm vi cục bộ, expected behavior rõ và có thể hoàn thành an toàn trong một vòng sửa–review–validate.
+`FAST_FIX` dùng khi expected behavior rõ, phạm vi bounded và có thể hoàn thành an toàn trong một change–validate loop. FAST_FIX có hai execution path bên trong, không tạo thêm workflow `SMALL/MEDIUM/LARGE`.
+
+Mặc định dùng `direct` cho thay đổi cục bộ, ít rủi ro:
 
 ```text
 DISCOVER
-→ PLAN
-→ ANALYZE
-→ CHANGE
+→ IMPLEMENT
 → VALIDATE
-→ DOCS_IMPACT
 → FINALIZE
 ```
 
-Với code production, orchestrator bắt buộc giao sửa file cho `implementation-agent`. Với web/UI, `implementation-agent` có thể dùng trực tiếp Browser tools trong cùng browser-driven loop `reproduce → inspect → edit → browser verify`; không cần handoff qua `browser-agent` chỉ để thao tác browser. `browser-agent` dành cho independent validation, reproduction-only, regression/responsive check hoặc khi cần evidence tách khỏi writer. Build, lint, typecheck và final integration validation vẫn thuộc `cli-executor`.
-
-Sau validation, orchestrator đánh giá tác động tài liệu; không tự động sửa README nếu thay đổi không ảnh hưởng tài liệu liên quan.
-
-Ví dụ backend:
+Khi task vẫn bounded nhưng evidence cho thấy cần regression test mới, independent review hoặc domain validation, orchestrator dùng `guarded`:
 
 ```text
-Sửa lỗi campaign eligibility trong hai service này, thêm test hẹp nhất, chạy validation và chỉ cập nhật docs nếu public behavior hoặc vận hành bị thay đổi.
+DISCOVER
+→ IMPLEMENT
+→ optional TEST / REVIEW / DOMAIN
+→ VALIDATE
+→ FINALIZE
+```
+
+Phạm vi task quyết định `FAST_FIX` hay `LONG_RUNNING`; mức rủi ro quyết định độ sâu validation. Vì vậy một thay đổi một dòng liên quan security, concurrency hoặc data integrity vẫn có thể cần guarded validation. Ngược lại, task mechanical/local không bị ép qua review, test writer hoặc docs worker nếu không có evidence cần chúng.
+
+Với code production, orchestrator bắt buộc giao sửa file cho `implementation-agent`. `review-agent` không phải bước mặc định; `test-agent` chỉ được gọi khi cần thêm/sửa test; `docs-agent` chỉ được gọi khi docs impact là `required`. Build, lint, typecheck và final integration validation vẫn thuộc `cli-executor`, đồng thời fresh validation evidence cùng signature/revision được tái sử dụng thay vì chạy lại.
+
+Với web/UI, `implementation-agent` có thể dùng trực tiếp Browser tools trong cùng browser-driven loop `reproduce → inspect → edit → browser verify`; không cần handoff qua `browser-agent` chỉ để thao tác browser. `browser-agent` dành cho independent validation, reproduction-only, regression/responsive check hoặc khi cần evidence tách khỏi writer.
+
+Nếu discovery phát hiện nhiều phase phụ thuộc, migration/rollback, compatibility contract, cross-module coordination đáng kể, architecture decision chưa rõ hoặc validation không thể hoàn tất trong bounded loop, orchestrator chuyển task sang `LONG_RUNNING` thay vì cố giữ FAST_FIX.
+
+Ví dụ backend direct:
+
+```text
+Sửa null guard trong service này, giữ nguyên public contract và chạy validation hẹp phù hợp.
+```
+
+Ví dụ backend guarded:
+
+```text
+Sửa lỗi campaign eligibility trong hai service này, thêm regression test cần thiết và validate behavior thay đổi.
 ```
 
 Ví dụ web/UI:

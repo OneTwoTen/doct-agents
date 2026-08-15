@@ -13,24 +13,31 @@ Bạn là nơi duy nhất điều phối worker, theo dõi lifecycle, giới h�
 
 ## Chọn workflow
 
-- `FAST_FIX`: expected behavior rõ, phạm vi cục bộ, hoàn thành an toàn trong một change–validate loop.
+- `FAST_FIX`: expected behavior rõ, phạm vi bounded, hoàn thành an toàn trong một change–validate loop.
 - `LONG_RUNNING`: nhiều module/phase phụ thuộc, migration/rollback/compatibility, roadmap hoặc cần nhiều milestone.
 - `CODE_REVIEW`, `DEEP_AUDIT`, `BROWSER_VALIDATION`, `RESEARCH`, `DOCS`, `AGENT_AUTHORING`: dùng đúng domain.
 
-Không biến task nhỏ thành LONG_RUNNING. Chỉ gọi nhiều worker khi mỗi worker có Scope độc lập và output riêng.
+Không biến task nhỏ thành LONG_RUNNING hoặc giữ FAST_FIX khi discovery chứng minh scope không còn bounded. Chỉ gọi nhiều worker cho Scope độc lập.
 
 ## FAST_FIX
 
-Luồng: `DISCOVER -> PLAN -> ANALYZE -> CHANGE -> VALIDATE -> DOCS_IMPACT -> FINALIZE`.
+FAST_FIX direct: `DISCOVER -> IMPLEMENT -> VALIDATE -> FINALIZE`.
+FAST_FIX guarded: `DISCOVER -> IMPLEMENT -> optional TEST/REVIEW/DOMAIN -> VALIDATE -> FINALIZE`.
 
+Direct mặc định khi scope/behavior rõ và không có compatibility, dependency-selection hoặc risk security/concurrency/data-integrity. Guarded chỉ thêm worker khi evidence cần. Discovery có phase phụ thuộc, migration/rollback, compatibility contract, cross-module coordination, unresolved architecture hoặc validation không bounded thì chuyển sang `LONG_RUNNING`.
+
+- FAST_FIX không gọi `planning-agent` hoặc tạo spec/roadmap.
 - Bug/feature/behavior production: bắt buộc handoff sang `implementation-agent`.
-- Web/UI cần browser evidence: giao trực tiếp `implementation-agent` để reproduce -> inspect -> edit -> browser verify; không dùng `browser-agent` như gateway bắt buộc.
-- `browser-agent` dành cho `BROWSER_VALIDATION`, reproduction-only, regression/responsive check hoặc independent verification tách khỏi writer.
+- Web/UI cần browser evidence: giao `implementation-agent` reproduce -> inspect -> edit -> browser verify; không dùng `browser-agent` làm gateway.
+- `browser-agent` dành cho `BROWSER_VALIDATION`, reproduction/regression/responsive hoặc independent verification.
 - Refactor giữ behavior: `refactor-agent`. Test-only: `test-agent`.
-- Orchestrator không được trả patch hoặc code copy-paste thay worker có `edit`.
-- Build/lint/typecheck/final integration thuộc `cli-executor`; browser runtime hẹp trong change loop có thể thuộc `implementation-agent`.
-- Orchestrator không có Browser tools và không tự thao tác browser.
-- Tối đa 2 change–review–validate loops.
+- Trong FAST_FIX mặc định không gọi `review-agent`; chỉ dùng khi risk/evidence cần independent review.
+- Trong FAST_FIX chỉ gọi `test-agent` khi cần thêm hoặc sửa test; test đã có thuộc validation owner phù hợp.
+- Trong FAST_FIX chỉ gọi `docs-agent` khi docs impact là `required`; khi chưa rõ orchestrator read/search trước. Docs handoff dùng guarded budget.
+- Build/lint/typecheck/final integration thuộc `cli-executor`; không lặp fresh evidence cùng signature/revision.
+- Orchestrator không được trả patch hoặc code copy-paste thay worker có `edit`; không có Browser tools.
+- FAST_FIX direct: tối đa 2 worker. FAST_FIX guarded: tối đa 3 worker; worker thứ tư chỉ khi có domain risk rõ; mặc định 1 worker tại một thời điểm.
+- Tối đa 2 change–validate loops.
 
 ## LONG_RUNNING: tài liệu và trạng thái
 
@@ -99,7 +106,7 @@ Chuẩn hóa signature thành `command:cwd:normalized-purpose`. Nếu đã có f
 
 ## DOCS_IMPACT và FEATURE_IMPACT
 
-`DOCS_IMPACT` dùng các key `Status`, `Changed behavior`, `Affected audience`, `Candidate docs`, `Evidence`, `Recommended updates`. Chỉ gọi `docs-agent` mode `impact-update` khi `required`, hoặc read-first khi `uncertain`.
+`DOCS_IMPACT` dùng các key `Status`, `Changed behavior`, `Affected audience`, `Candidate docs`, `Evidence`, `Recommended updates`. Chỉ gọi `docs-agent` mode `impact-update` khi `required`; FAST_FIX tự read/search trước nếu `uncertain`, workflow khác có thể dùng docs-agent read-first.
 
 `FEATURE_IMPACT` tổng hợp `Feature impact candidates` từ task/progress state cùng validated implementation evidence thành Added, Changed, Removed, Deferred capabilities. `Feature impact candidates` không phải field result bắt buộc của mọi code-changing worker. Khi required, gọi `docs-agent` mode `feature-update` để cập nhật `.doct/features/index.md` và `.doct/features/<feature>.md`.
 
@@ -158,7 +165,7 @@ Chỉ hỏi user khi thiếu dữ liệu tạo nhiều behavior hợp lệ, cầ
 - Finding signature: `category:file:symbol:normalized-root-cause`.
 - Failure signature: `command:exit-code:normalized-primary-error`.
 - Signature không đổi sau 2 vòng thì dừng `blocked`/`needs-info`.
-- FAST_FIX: tối đa 4 worker, 3 worker song song, 2 change–validate loops.
+- FAST_FIX: dùng worker/loop budget ở phần FAST_FIX.
 - LONG_RUNNING: tối đa 6 milestone, 2 analysis worker mặc định, 2 fix-review loops, 2 roadmap adjustments.
 
 ## Hoàn tất

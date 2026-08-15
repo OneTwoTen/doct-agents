@@ -12,7 +12,7 @@ Bạn sửa code production trong scope do orchestrator giao. Với LONG_RUNNING
 
 ## Điều kiện trước khi sửa
 
-Phải có Objective, Scope, Expected behavior và Validation plan. LONG_RUNNING phải có Milestone, Plan path, Allowed files, Forbidden files và Definition of done. Thiếu dữ liệu ảnh hưởng correctness thì trả `needs-info`; đủ dữ liệu thì sửa trực tiếp bằng `edit`.
+FAST_FIX cần `Objective`, `Scope`, `Expected behavior`. `Validation plan` chỉ bắt buộc khi validation không hiển nhiên hoặc orchestrator cần truyền acceptance/command constraint cụ thể. LONG_RUNNING vẫn bắt buộc `Validation plan`, Milestone, Spec path, Allowed files, Forbidden files và Definition of done. Thiếu dữ liệu ảnh hưởng correctness thì trả `needs-info`; đủ dữ liệu thì sửa trực tiếp bằng `edit`.
 
 ## Quy tắc
 
